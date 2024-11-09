@@ -48,6 +48,9 @@ export default class Server implements Party.Server {
         let blueTeam: TeamData =
             (await this.room.storage.get("blueTeam") ?? {players: [], isBlueTeam: true, score: 0});
 
+        let questionNum = 
+            (await this.room.storage.get("questionNum") ?? 0);
+
         // Assign new player to the team
         if (p.isBlue) blueTeam.players.push(p);
         else redTeam.players.push(p);
@@ -55,7 +58,7 @@ export default class Server implements Party.Server {
         await this.room.storage.put("redTeam", redTeam);
         await this.room.storage.put("blueTeam", blueTeam);
 
-        conn.send(JSON.stringify(this.getQuestion(0)));
+        conn.send(JSON.stringify(this.getNextQuestion()));
     }
 
     async onRequest(req: Party.Request): Promise<Response> {
@@ -71,7 +74,7 @@ export default class Server implements Party.Server {
         return new Response("Not Found", { status: 404 });
     }
 
-    onMessage(message: string, sender: Party.Connection) {
+    async onMessage(message: string, sender: Party.Connection) {
         // let's log the message
         console.log(`connection ${sender.id} sent message: ${message}`);
         // as well as broadcast it to all the other connections in the room...
@@ -79,17 +82,21 @@ export default class Server implements Party.Server {
             case "startGame":
                 // Send all the users the first question
                 //sender.send(JSON.stringify(this.getQuestion(0)));
+                // Reset the question number
+                await this.room.storage.put("questionNum", 0);
+                var q = await this.getNextQuestion();
                 this.room.broadcast(
-                    `${sender.id}: ${"start"}`,
+                    
+                    `New Game First Question: ${q.img}`,
                     // ...except for the connection it came from
                     [sender.id]
                 );
 
-                break
+                break;
             case "nextQuestion":
-                
+                var q = await this.getNextQuestion();
                 this.room.broadcast(
-                    `${sender.id}: ${"start"}`,
+                    `Next Questions" ${q.img}`,
                     // ...except for the connection it came from
                     [sender.id]
                 );
@@ -106,9 +113,13 @@ export default class Server implements Party.Server {
         );
     }
 
-    getQuestion(i: number): HistoricEvent {
-        // Open CSV file and get a random question
-        return historicEvents[i];
+    async getNextQuestion(): Promise<HistoricEvent> {
+        let i: number | undefined = await this.room.storage.get("questionNum");
+        if (i === undefined) i = 0;
+        let q = historicEvents[i];
+        i++;
+        this.room.storage.put("questionNum", i);
+        return q;
     }
 }
 
