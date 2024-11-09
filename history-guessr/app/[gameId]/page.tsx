@@ -1,4 +1,5 @@
 import { GameNotFound } from "@/components/game-not-found";
+import { QuizDisplay } from "@/components/quiz-display";
 import { TeamSelection } from "@/components/team-selection";
 import { GamePage as GamePageComponent } from "@/components/game-page";
 
