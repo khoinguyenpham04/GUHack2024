@@ -69,7 +69,19 @@
         <button onclick="sendMessage()">Send</button>
     </div>
 
+    <button onclick="sendGuess()">SEND MESSAGE</button>
+
     <script>
+        function sendGuess() {
+            const guess = {
+                date: "01/01/01",
+                long: "10",
+                lat: "10",
+            }
+
+            ws.send(JSON.stringify(guess));
+        }
+
         let ws;
         const messagesDiv = document.getElementById('messages');
         const statusDiv = document.getElementById('connectionStatus');

@@ -1,5 +1,27 @@
 import type * as Party from "partykit/server";
 import { historicEvents, HistoricEvent } from './data';
+import { calculateUserScore } from "./utils";
+
+/*
+These define the message types that the server will receive from the client
+*/
+
+export enum MessageType {
+    HostCommand = "hostCommand",
+    Guess = "guess"
+}
+
+export type Answer = {
+    questionNumber: number;
+    lat: number;
+    long: number;
+    year: number;
+}
+
+export type Message = {
+    type: MessageType;
+    content: Answer | null;
+}
 
 export type PlayerData = {
     id: string;
@@ -34,8 +56,8 @@ export default class Server implements Party.Server {
         // let's send a message to the connection
         conn.send("hello from server");
 
-        let p : PlayerData = {
-            id: conn.id, 
+        let p: PlayerData = {
+            id: conn.id,
             name: ctx.name,
             isBlue: ctx.isBlue,
             cumScore: 0,
@@ -43,12 +65,12 @@ export default class Server implements Party.Server {
         };
 
         let redTeam: TeamData =
-            (await this.room.storage.get("redTeam") ?? {players: [], isBlueTeam: false, score: 0});
+            (await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 });
 
         let blueTeam: TeamData =
-            (await this.room.storage.get("blueTeam") ?? {players: [], isBlueTeam: true, score: 0});
+            (await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 });
 
-        let questionNum = 
+        let questionNum =
             (await this.room.storage.get("questionNum") ?? 0);
 
         // Assign new player to the team
@@ -74,36 +96,28 @@ export default class Server implements Party.Server {
         return new Response("Not Found", { status: 404 });
     }
 
+    /*
+    Messages expected format:
+    {
+        "type": ONE OF: "hostCommand", "guess"
+        "answer": (lat, long, date)
+    }
+    */
     async onMessage(message: string, sender: Party.Connection) {
         // let's log the message
-        console.log(`connection ${sender.id} sent message: ${message}`);
-        // as well as broadcast it to all the other connections in the room...
-        switch (message) {
-            case "startGame":
-                // Send all the users the first question
-                //sender.send(JSON.stringify(this.getQuestion(0)));
-                // Reset the question number
-                await this.room.storage.put("questionNum", 0);
-                var q = await this.getNextQuestion();
-                this.room.broadcast(
-                    
-                    `New Game First Question: ${q.img}`,
-                    // ...except for the connection it came from
-                    [sender.id]
-                );
+        // console.log(`connection ${sender.id} sent message: ${message}`);
 
-                break;
-            case "nextQuestion":
-                var q = await this.getNextQuestion();
-                this.room.broadcast(
-                    `Next Questions" ${q.img}`,
-                    // ...except for the connection it came from
-                    [sender.id]
-                );
-                break;
-            case "reset":
-                this.room.broadcast("reset", []);
-                break;
+        let message_json = JSON.parse(message);
+        if (message_json.type == "hostCommand") {
+            this.handleHostCommand(message_json.content, sender.id);
+        }
+        else if (message_json == "guess") {
+            let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
+            if (currentQ === undefined) return;
+            let cLat: number = currentQ.lat;
+            let cLong: number = currentQ.long;
+            let cYear: number = currentQ.year;
+            this.handleGuess(JSON.stringify(message_json.answer), cLong , cLat, cYear, sender.id);
         }
 
         this.room.broadcast(
@@ -113,12 +127,68 @@ export default class Server implements Party.Server {
         );
     }
 
+    async handleHostCommand(cmd: string, id: string): Promise<void>{
+        switch (cmd) {
+                case "startGame":
+                    await this.room.storage.put("questionNum", 0);
+                    var q = await this.getNextQuestion();
+                    this.room.broadcast(
+                        `Next Questions" ${q.img}`,
+                        // ...except for the connection it came from
+                        [id]
+                    );
+                    break;
+                case "nextQuestion":
+                    var q = await this.getNextQuestion();
+                    this.room.broadcast(
+                        `Next Questions" ${q.img}`,
+                        // ...except for the connection it came from
+                        [id]
+                    );
+                    break;
+            }
+    }
+    
+    async getTeamOfPlayer(id: string): Promise<Boolean | undefined>  {
+        let redTeam: TeamData | undefined = await this.room.storage.get("redTeam");
+        let blueTeam: TeamData | undefined = await this.room.storage.get("blueTeam");
+
+        if (redTeam === undefined || blueTeam === undefined) return undefined;
+
+        let player: PlayerData | undefined = redTeam.players.find(p => p.id === id);
+        if (player === undefined) player = blueTeam.players.find(p => p.id === id);
+
+        return player === undefined ? undefined : player.isBlue;
+    }
+
+    async handleGuess(guess: string, correctLong: number, correctLat: number, correctDate: number, id: string): Promise<void> {
+        // Check if the answer is correct
+        let guessJSON = JSON.parse(guess);
+        let usrScore: number = calculateUserScore(correctLat, correctLong, correctDate, guessJSON.lat, guessJSON.long, guessJSON.year);
+        // Defaults to red team
+        let usrTeam  = await this.getTeamOfPlayer(id) ?? false;
+
+        // Update the score
+        if (usrTeam) {
+            let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
+            blueTeam.score += usrScore;
+            await this.room.storage.put("blueTeam", blueTeam);
+        }
+        else {
+            let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: true, score: 0};
+            redTeam.score += usrScore;
+            await this.room.storage.put("redTeam", redTeam);
+        }
+        // Send the next question
+    }
+
     async getNextQuestion(): Promise<HistoricEvent> {
         let i: number | undefined = await this.room.storage.get("questionNum");
         if (i === undefined) i = 0;
         let q = historicEvents[i];
         i++;
         this.room.storage.put("questionNum", i);
+        this.room.storage.put("currentQuestion", q);
         return q;
     }
 }

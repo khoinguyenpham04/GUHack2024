@@ -2,7 +2,7 @@ export interface HistoricEvent {
     name: string;
     desc: string;
     img: string;
-    date: string;
+    year: number;
     long: number;
     lat: number;
   }
@@ -12,7 +12,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Battle of Berlin",
       desc: "Soviet offensive and capture of the German capital",
       img: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Raising_a_flag_over_the_Reichstag_-_Restoration.jpg",
-      date: "02/05/1945",
+      year: 1945,
       long: 13.3762,
       lat: 52.5186
     },
@@ -20,7 +20,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Assassination of Archduke Franz Ferdinand",
       desc: "Assassination leading to World War I",
       img: "https://upload.wikimedia.org/wikipedia/commons/0/09/Assassination_of_Archduke_Franz_Ferdinand.jpg",
-      date: "28/06/1914",
+      year: 1914,
       long: 20.4633,
       lat: 44.8167
     },
@@ -28,7 +28,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Stock Market Crash",
       desc: "Beginning of the Great Depression; Wall Street collapse",
       img: "https://upload.wikimedia.org/wikipedia/commons/0/0b/1929_stock_market_crash.jpg",
-      date: "29/10/1929",
+      year: 1929,
       long: -74.0060,
       lat: 40.7128
     },
@@ -36,7 +36,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Attack on Pearl Harbor",
       desc: "Japanese attack on U.S. naval base leading to U.S. entry into WWII",
       img: "https://upload.wikimedia.org/wikipedia/commons/2/29/Pearl_Harbor_attack.jpg",
-      date: "07/12/1941",
+      year: 1941,
       long: -157.9394,
       lat: 21.3546
     },
@@ -44,7 +44,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "D-Day",
       desc: "Allied invasion of Normandy, pivotal in liberating France in WWII",
       img: "https://upload.wikimedia.org/wikipedia/commons/a/a4/NormandyLST.jpg",
-      date: "06/06/1944",
+      year: 1944,
       long: -0.8204,
       lat: 49.4144
     },
@@ -52,7 +52,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Battle of Dien Bien Phu",
       desc: "Decisive battle leading to the end of French rule in Vietnam",
       img: "https://upload.wikimedia.org/wikipedia/commons/f/f7/French_prisoners_after_the_battle_of_Dien_Bien_Phu.jpg",
-      date: "07/05/1954",
+      year: 1954,
       long: 103.1500,
       lat: 21.3833
     },
@@ -60,7 +60,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Gulf of Tonkin Incident",
       desc: "Incident that escalated U.S. involvement in the Vietnam War",
       img: "https://upload.wikimedia.org/wikipedia/commons/a/a2/USS_Maddox_DD-731.jpg",
-      date: "02/08/1964",
+      year: 1964,
       long: 108.3239,
       lat: 16.0726
     },
@@ -68,7 +68,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Tet Offensive",
       desc: "Major North Vietnamese and Viet Cong assault during the Vietnam War",
       img: "https://upload.wikimedia.org/wikipedia/commons/9/9b/TetOffensiveSaigon.jpg",
-      date: "30/01/1968",
+      year: 1968,
       long: 106.6297,
       lat: 10.8231
     },
@@ -76,7 +76,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Fall of Saigon",
       desc: "Final battle of the Vietnam War leading to U.S. withdrawal and unification of Vietnam",
       img: "https://upload.wikimedia.org/wikipedia/commons/f/f4/Fall_of_Saigon.jpg",
-      date: "30/04/1975",
+      year: 1975,
       long: 106.6297,
       lat: 10.8231
     },
@@ -84,7 +84,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Hiroshima Bombing",
       desc: "First atomic bomb dropped on Hiroshima by the U.S., ending WWII",
       img: "https://upload.wikimedia.org/wikipedia/commons/8/87/Atomic_bombing_of_Hiroshima.jpg",
-      date: "06/08/1945",
+      year: 1945,
       long: 132.4553,
       lat: 34.3853
     },
@@ -92,7 +92,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Cuban Missile Crisis",
       desc: "13-day confrontation between the U.S. and the Soviet Union over nuclear missiles in Cuba",
       img: "https://upload.wikimedia.org/wikipedia/commons/e/e9/President_Kennedy_addresses_the_nation_on_Cuban_missile_crisis.jpg",
-      date: "22/10/1962",
+      year: 1962,
       long: -82.3666,
       lat: 23.1136
     },
@@ -100,7 +100,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Moon Landing",
       desc: "First human moon landing by Apollo 11 mission",
       img: "https://upload.wikimedia.org/wikipedia/commons/a/a1/Apollo_11_first_steps.jpg",
-      date: "20/07/1969",
+      year: 1969,
       long: -23.4733,
       lat: 0.6731
     },
@@ -108,7 +108,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Berlin Airlift",
       desc: "Soviet blockade of West Berlin overcome by Allied airlift",
       img: "https://upload.wikimedia.org/wikipedia/commons/f/f4/C-54s_unloading_at_Tempelhof_Airport_Berlin_1948.jpg",
-      date: "26/06/1948",
+      year: 1948,
       long: 13.4061,
       lat: 52.5206
     },
@@ -116,7 +116,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Fall of the Berlin Wall",
       desc: "Symbolic end of the Cold War and East-West divide in Europe",
       img: "https://upload.wikimedia.org/wikipedia/commons/f/fd/Fall_of_the_Berlin_Wall.jpg",
-      date: "09/11/1989",
+      year: 1989,
       long: 13.3762,
       lat: 52.5163
     },
@@ -124,7 +124,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Indian Independence",
       desc: "End of British rule in India and creation of independent India and Pakistan",
       img: "https://upload.wikimedia.org/wikipedia/commons/7/7f/Mahatma_Gandhi%2C_Jawaharlal_Nehru_and_Sardar_Patel.jpg",
-      date: "15/08/1947",
+      year: 1947,
       long: 77.2167,
       lat: 28.6667
     },
@@ -132,7 +132,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Fall of the Soviet Union",
       desc: "Official dissolution of the Soviet Union and end of the Cold War",
       img: "https://upload.wikimedia.org/wikipedia/commons/a/ad/RedSquareBasilCathedral.jpg",
-      date: "26/12/1991",
+      year: 1991,
       long: 37.6176,
       lat: 55.7558
     },
@@ -140,7 +140,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "Nelson Mandela's Release from Prison",
       desc: "End of apartheid era and beginning of democratic transition in South Africa",
       img: "https://upload.wikimedia.org/wikipedia/commons/8/8f/Mandela_Walter_Sisulu.jpg",
-      date: "11/02/1990",
+      year: 1990,
       long: 18.4233,
       lat: -33.9186
     },
@@ -148,7 +148,7 @@ export const historicEvents: HistoricEvent[] = [
       name: "9/11 Attacks",
       desc: "Terrorist attacks on the World Trade Center and the Pentagon",
       img: "https://upload.wikimedia.org/wikipedia/commons/9/91/September_11_photo_montage.jpg",
-      date: "11/09/2001",
+      year: 2001,
       long: -74.0134,
       lat: 40.7115
     }
