@@ -1,10 +1,9 @@
 "use client";
-
 import { useState } from "react";
-import { LandingPage } from "@/components/landing-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import Link from "next/link";
 import { joinGame,createGame } from "./actions/landingPageActions";
 
 export default function Home() {
