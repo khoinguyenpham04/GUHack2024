@@ -25,10 +25,10 @@ export default class Server implements Party.Server {
 
     }
 
-    onRequest(req: Party.Request): Response | Promise<Response> {
+    async onRequest(req: Party.Request): Promise<Response> {
         // Handle different HTTP methods
         if (req.method === "GET") {
-            return new Response("", {
+            return new Response("i", {
                 status: 200,
                 headers: { "Content-Type": "text/plain" },
             });
