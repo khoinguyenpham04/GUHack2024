@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PartyKit Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 20px auto; 
+            padding: 0 20px; 
+        }
+        #messages { 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            height: 300px; 
+            overflow-y: auto; 
+            margin-bottom: 10px; 
+        }
+        .message { 
+            margin: 5px 0; 
+            padding: 5px; 
+            background: #f0f0f0; 
+        }
+        .system { color: #666; }
+        .server { color: #0066cc; }
+        .client { color: #006600; }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            flex-grow: 1;
+            padding: 5px;
+        }
+        button {
+            padding: 5px 15px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .status {
+            padding: 5px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>PartyKit Test Client</h1>
+    
+    <div id="connectionStatus" class="status disconnected">Disconnected</div>
+    
+    <div class="input-area">
+        <input type="text" id="roomInput" placeholder="Enter room ID" value="test-room">
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+
+    <div id="messages"></div>
+    
+    <div class="input-area">
+        <input type="text" id="messageInput" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        let ws;
+        const messagesDiv = document.getElementById('messages');
+        const statusDiv = document.getElementById('connectionStatus');
+        const messageInput = document.getElementById('messageInput');
+        const roomInput = document.getElementById('roomInput');
+
+        function addMessage(message, type = 'system') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function connect() {
+            const room = roomInput.value || 'test-room';
+            // Replace with your PartyKit host
+            const host = 'localhost:1999';
+            const url = `ws://${host}/party/${room}`;
+            
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = 'Connected';
+                addMessage('Connected to server');
+            };
+
+            ws.onclose = () => {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = 'Disconnected';
+                addMessage('Disconnected from server');
+            };
+
+            ws.onmessage = (event) => {
+                addMessage(event.data, 'server');
+            };
+
+            ws.onerror = (error) => {
+                addMessage('WebSocket error: ' + error.message);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+        }
+
+        function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('Not connected to server!');
+                return;
+            }
+
+            const message = messageInput.value;
+            if (message) {
+                ws.send(message);
+                addMessage(`You: ${message}`, 'client');
+                messageInput.value = '';
+            }
+        }
+
+        // Allow Enter key to send messages
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
