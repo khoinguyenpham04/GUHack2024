@@ -1,8 +1,7 @@
-import { TeamSelection } from "@/components/team-selection";
-
+import { GamePage } from "@/components/game-page";
 
 export default function Home() {
   return (
-    <TeamSelection />
+    <GamePage />
   );
 }
