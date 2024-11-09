@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import mapboxgl from 'mapbox-gl'
+import mapboxgl, { Marker } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
@@ -16,6 +16,8 @@ export function GamePage() {
   const [lng, setLng] = useState(-70.9)
   const [lat, setLat] = useState(42.35)
   const [zoom, setZoom] = useState(3)
+  const [marker, setMarker] = useState<mapboxgl.Marker | null>(null)
+  const [markerPosition, setMarkerPosition] = useState<{lng: number, lat: number} | null>(null)
 
   useEffect(() => {
     if (map.current || !mapContainer.current) return; // initialize map only once and ensure container exists
@@ -40,13 +42,63 @@ export function GamePage() {
       setZoom(Number(map.current.getZoom().toFixed(2)));
     });
 
+    // Add click handler to map
+    map.current.on('click', (e) => {
+      // First, remove any existing marker and clean up state
+      if (marker) {
+        marker.remove();
+        setMarker(null);
+        setMarkerPosition(null);
+      }
+
+      // Create new marker after a short delay to ensure cleanup is complete
+      setTimeout(() => {
+        const newMarker = new mapboxgl.Marker({
+          color: "#FF0000",
+          draggable: true
+        })
+          .setLngLat([e.lngLat.lng, e.lngLat.lat])
+          .addTo(map.current!);
+
+        // Update marker position state
+        setMarkerPosition({
+          lng: e.lngLat.lng,
+          lat: e.lngLat.lat
+        });
+
+        // Add dragend event listener to marker
+        newMarker.on('dragend', () => {
+          const position = newMarker.getLngLat();
+          setMarkerPosition({
+            lng: position.lng,
+            lat: position.lat
+          });
+        });
+
+        // Store the new marker in state
+        setMarker(newMarker);
+      }, 0);
+    });
+
     // Cleanup function to remove map on unmount
     return () => {
+      if (marker) {
+        marker.remove();
+      }
       if (map.current) {
         map.current.remove();
       }
     };
   }, []); // Empty dependency array since we only want to initialize once
+
+  // First, add a function to handle marker removal
+  const removeMarker = () => {
+    if (marker) {
+      marker.remove();
+      setMarker(null);
+      setMarkerPosition(null);
+    }
+  };
 
   return (
     <div className="min-h-screen grid grid-cols-2 gap-4 p-4">
@@ -77,6 +129,22 @@ export function GamePage() {
       {/* Right side - Map and Slider */}
       <div className="relative flex flex-col gap-4">
         <div ref={mapContainer} className="flex-1 rounded-lg overflow-hidden" />
+        
+        {/* Show marker position and remove button when marker exists */}
+        {markerPosition && (
+          <div className="absolute top-4 left-4 bg-white/90 p-2 rounded-md shadow-md space-y-2">
+            <p className="text-sm font-mono">
+              Marker position: {markerPosition.lng.toFixed(4)}, {markerPosition.lat.toFixed(4)}
+            </p>
+            <button 
+              onClick={removeMarker}
+              className="w-full px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Remove Marker
+            </button>
+          </div>
+        )}
+
         <input
           type="range"
           min="1900"

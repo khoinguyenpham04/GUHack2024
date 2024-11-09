@@ -1,5 +1,6 @@
 import { GameNotFound } from "@/components/game-not-found";
 import { TeamSelection } from "@/components/team-selection";
+import { GamePage as GamePageComponent } from "@/components/game-page";
 
 
 const isValidId = (id: string) => {
@@ -7,15 +8,19 @@ const isValidId = (id: string) => {
     return regex.test(id);
   };
 
-export default async function GamePage({
-    params: { gameId },
-  }: {
-    params: { gameId: string},
-  }) {
+// export default async function GamePage({
+//     params: { gameId },
+//   }: {
+//     params: { gameId: string},
+//   }) {
     
-    if (!isValidId(gameId)) {
-      return <GameNotFound/>;
-    }
+//     if (!isValidId(gameId)) {
+//       return <GameNotFound/>;
+//     }
   
-    return <TeamSelection/>;
-  }
+//     return <GamePageComponent/>;
+//   }
+
+export default function GamePage() {
+    return <GamePageComponent/>;
+}
