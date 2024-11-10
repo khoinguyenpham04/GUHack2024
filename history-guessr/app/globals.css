@@ -84,3 +84,15 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-thumb {
   @apply appearance-none w-4 h-4 bg-purple-600 rounded-full;
 }
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.shadow-neumorphism {
+  box-shadow: 
+    20px 20px 60px #d1d1d1,
+    -20px -20px 60px #ffffff;
+}

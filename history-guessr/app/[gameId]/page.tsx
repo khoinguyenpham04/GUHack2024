@@ -2,7 +2,7 @@
 
 import { GameNotFound } from "@/components/game-not-found";
 import { TeamSelection } from "@/components/team-selection";
-import { GamePage as GamePageComponent } from "@/components/game-page";
+import { ClientGamePage as GamePageComponent } from "@/components/game-page";
 import { GameResult } from "@/components/game-result";
 import { GameManager } from "@/components/game-manager";
 import HostLobby from "@/components/host-lobby";

@@ -1,114 +1,153 @@
 'use client'
 
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Flag } from "lucide-react";
-import { useState } from "react";
+import { useState } from "react"
+import { Card } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Flag } from "lucide-react"
+import PartySocket from "partysocket"
 
 interface Player {
-  name: string;
-  score: number;
-  team: 'red' | 'blue';
+  name: string
+  score: number
+  team: 'red' | 'blue'
 }
 
-export function QuizDisplay() {
+interface QuizDisplayProps {
+  gameSocket: PartySocket,
+  imageUrl?: string | null
+}
 
-  const [currentRound, setCurrentRound] = useState(0);
-  const totalRounds = 5;
+
+
+export function QuizDisplay({
+  gameSocket,
+  imageUrl
+}: QuizDisplayProps) {
+  const [currentRound, setCurrentRound] = useState(0)
+  const totalRounds = 5
   const [players, setPlayers] = useState<Player[]>([
+    { name: "Player 1", score: 5000, team: 'blue' },
+    { name: "Player 2", score: 5000, team: 'red' },
+    { name: "Player 3", score: 0, team: 'red' },
+    { name: "Player 4", score: 4, team: 'red' },
+    { name: "Player 5", score: 0, team: 'red' },
+    { name: "Player 6", score: 2, team: 'red' },
+    { name: "Player 7", score: 0, team: 'red' },
+  ])
 
-    { name: "player 1", score: 5000, team: 'blue' },
-    { name: "player 2", score: 5000, team: 'red' },
-    { name: "player 3", score: 0, team: 'red' },
-    { name: "player 4", score: 4, team: 'red' },
-    { name: "player 5", score: 0, team: 'red' },
-    { name: "player 5", score: 2, team: 'red' },
-    { name: "player 5", score: 0, team: 'red' },
-  ]);
-
-  // Team progress values (0-100)
-  const [redProgress, setRedProgress] = useState(90);
-  const [blueProgress, setBlueProgress] = useState(40);
-  // Determine max progress and team color based on the higher progress
-  const maxProgress = Math.max(redProgress, blueProgress);
-  const progressColor = maxProgress === redProgress ? 'bg-red-600' : 'bg-blue-600';
+  const [redProgress, setRedProgress] = useState(90)
+  const [blueProgress, setBlueProgress] = useState(40)
+  const maxProgress = Math.max(redProgress, blueProgress)
+  const progressColor = redProgress > blueProgress ? 'from-red-500 to-red-600' : 'from-blue-500 to-blue-600'
+  const validImageUrl = typeof imageUrl === "string" && imageUrl.trim() !== "";
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      {/* Round Counter */}
-      <div className="flex justify-center">
-        <div className="bg-blue-100 rounded-full px-6 py-2 text-2xl font-bold text-blue-900">
-          {currentRound} / {totalRounds}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Round Counter */}
+        <div className="flex justify-center">
+          <div className="bg-white bg-opacity-80 backdrop-blur-md rounded-full px-8 py-3 text-3xl font-bold text-gray-800 shadow-lg">
+            Round {currentRound} / {totalRounds}
+          </div>
         </div>
-      </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Image Section */}
-        <Card className="aspect-video bg-blue-50 flex items-center justify-center">
-          <img
-            src="/placeholder.svg?height=400&width=600"
-            alt="Quiz question image"
-            className="rounded-lg object-cover"
-            width={600}
-            height={400}
-          />
-        </Card>
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Image Section */}
+          <Card className="overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105">
+            <div className="aspect-video bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center p-6">
+              {validImageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt="Quiz question image"
+                  className="rounded-lg object-cover shadow-md"
+                  width={600}
+                  height={400}
+                />
+              ) : (
+                <p className="text-gray-500">Image not available</p>
+              )}
+            </div>
+          </Card>
 
-        {/* Leaderboard Section */}
-        <Card className="p-4 bg-blue-50">
-          <h2 className="text-2xl font-bold text-blue-900 mb-4">Top Score</h2>
-          <div className="space-y-2">
-            {players
-              .sort((a, b) => b.score - a.score) // Sort by score in descending order
-              .slice(0, 5) // Take only the top 5 scores
-              .map((player, index) => (
+          {/* Leaderboard Section */}
+          <Card className="overflow-hidden rounded-2xl shadow-2xl bg-white bg-opacity-80 backdrop-blur-md">
+            <div className="p-6">
+              <h2 className="text-3xl font-bold text-gray-800 mb-6">Top Scores</h2>
+              <div className="space-y-3">
+                {players
+                  .sort((a, b) => b.score - a.score)
+                  .slice(0, 5)
+                  .map((player, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-xl text-white font-semibold flex justify-between items-center shadow-md transition-all duration-300 hover:shadow-lg ${player.team === 'blue' ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-red-500 to-red-600'
+                        }`}
+                    >
+                      <span className="text-lg">{player.name}</span>
+                      <span className="text-2xl">{player.score.toLocaleString()}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Progress Bars */}
+        <Card className="overflow-hidden rounded-2xl shadow-2xl bg-white bg-opacity-80 backdrop-blur-md">
+          <div className="p-8 pt-16">
+            <div className="relative">
+              <Progress
+                value={100}
+                className={`h-8 rounded-full overflow-hidden bg-gradient-to-r ${progressColor}`}
+              />
+              <div className="absolute inset-0 flex">
                 <div
-                  key={index}
-                  className={`p-3 rounded-lg text-white font-semibold flex justify-between ${player.team === 'blue' ? 'bg-blue-600' : 'bg-red-600'
-                    }`}
-                >
-                  <span>{player.name}</span>
-                  <span>{player.score}</span>
+                  className="h-full bg-red-600 opacity-50 transition-all duration-300"
+                  style={{ width: `${redProgress}%` }}
+                />
+                <div
+                  className="h-full bg-blue-600 opacity-50 transition-all duration-300"
+                  style={{ width: `${blueProgress}%` }}
+                />
+              </div>
+              {/* Red Team Flag */}
+              <div
+                className="absolute bottom-full left-0 mb-2 transition-all duration-300"
+                style={{
+                  left: `${redProgress}%`,
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <div className="bg-white rounded-full p-2 shadow-lg">
+                    <Flag className="h-6 w-6 text-red-600" />
+                  </div>
+                  <span className="mt-1 text-sm font-semibold text-red-600 bg-white px-2 py-1 rounded-full shadow-sm">
+                    Red
+                  </span>
                 </div>
-              ))}
+              </div>
+              {/* Blue Team Flag */}
+              <div
+                className="absolute bottom-full left-0 mb-2 transition-all duration-300"
+                style={{
+                  left: `${blueProgress}%`,
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <div className="bg-white rounded-full p-2 shadow-lg">
+                    <Flag className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <span className="mt-1 text-sm font-semibold text-blue-600 bg-white px-2 py-1 rounded-full shadow-sm">
+                    Blue
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </Card>
       </div>
-
-      {/* Progress Bars */}
-      <Card className="p-12 bg-blue-50">
-        <div className="space-y-4">
-          {/* Red and Blue Team Progress */}
-          <div className="relative flex items-center">
-            {/* Centered Progress Bar */}
-            <Progress value={maxProgress} className={`h-4 ${progressColor} w-full`} />
-
-            {/* Red Team Flag */}
-            <div
-              className="absolute"
-              style={{
-                top: '-80%', // Center vertically
-                left: `${redProgress}%`,
-                transform: 'translate(-20%, -60%)', // Center horizontally, adjust vertically
-              }}
-            >
-              <Flag className="h-8 w-8 text-red-600" />
-            </div>
-
-            {/* Blue Team Flag */}
-            <div
-              className="absolute"
-              style={{
-                top: '-80%', // Center vertically
-                left: `${blueProgress}%`,
-                transform: 'translate(-20%, -60%)', // Center horizontally, adjust vertically
-              }}
-            >
-              <Flag className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-        </div>
-      </Card>
     </div>
   )
 }

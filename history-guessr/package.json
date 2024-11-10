@@ -9,9 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-progress": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@tabler/icons-react": "^3.21.0",
     "@types/mapbox-gl": "^3.4.1",
+    "canvas-confetti": "^1.9.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "framer": "^2.4.1",

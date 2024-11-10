@@ -1,15 +1,23 @@
-"use client"
 
 import { useState, useRef, useEffect } from "react"
 import mapboxgl, { Marker } from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
+import PartySocket from "partysocket"
 
 // Replace with your actual token
 mapboxgl.accessToken = "pk.eyJ1Ijoia2hvbmd1eWVucGhhbSIsImEiOiJjbTNhaDY1dmQxOXN6MmxyNjZheW91NjM0In0.3zt1-I2kEcZ2plvSktUkoA"
 
-export function GamePage() {
+interface ClientGamePageProps {
+  gameSocket: PartySocket,
+  imageUrl?: string | null
+}
+
+export function ClientGamePage({
+  gameSocket,
+  imageUrl
+}: ClientGamePageProps) {
   const mapContainer = useRef(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const [year, setYear] = useState(1962)
@@ -17,12 +25,13 @@ export function GamePage() {
   const [lat, setLat] = useState(42.35)
   const [zoom, setZoom] = useState(3)
   const [marker, setMarker] = useState<mapboxgl.Marker | null>(null)
-  const [markerPosition, setMarkerPosition] = useState<{lng: number, lat: number} | null>(null)
+  const [markerPosition, setMarkerPosition] = useState<{ lng: number, lat: number } | null>(null)
+  const validImageUrl = typeof imageUrl === "string" && imageUrl.trim() !== "";
 
   useEffect(() => {
     if (map.current || !mapContainer.current) return; // initialize map only once and ensure container exists
-    
-    
+
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current as HTMLElement,
       style: 'mapbox://styles/mapbox/streets-v12',
@@ -36,7 +45,7 @@ export function GamePage() {
     // Update state on map move
     map.current.on('move', () => {
       if (!map.current) return;
-      
+
       setLng(Number(map.current.getCenter().lng.toFixed(4)));
       setLat(Number(map.current.getCenter().lat.toFixed(4)));
       setZoom(Number(map.current.getZoom().toFixed(2)));
@@ -106,13 +115,18 @@ export function GamePage() {
       <div className="relative">
         <Card className="h-full overflow-hidden">
           <div className="relative aspect-video w-full">
-            <Image
-              src="/Coldwar.jpeg"
-              alt="Historical photograph"
-              fill
-              className="object-cover"
-              priority
-            />
+            {validImageUrl ? (
+              <img
+                src={imageUrl}
+                alt="Quiz question image"
+                className="rounded-lg object-cover shadow-md"
+                width={600}
+                height={400}
+              />
+            ) : (
+              <p className="text-gray-500">Image not available</p>
+            )}
+
           </div>
           <div className="p-4 space-y-4">
             <div className="flex justify-between items-center">
@@ -125,18 +139,18 @@ export function GamePage() {
           </div>
         </Card>
       </div>
-      
+
       {/* Right side - Map and Slider */}
       <div className="relative flex flex-col gap-4">
         <div ref={mapContainer} className="flex-1 rounded-lg overflow-hidden" />
-        
+
         {/* Show marker position and remove button when marker exists */}
         {markerPosition && (
           <div className="absolute top-4 left-4 bg-white/90 p-2 rounded-md shadow-md space-y-2">
             <p className="text-sm font-mono">
               Marker position: {markerPosition.lng.toFixed(4)}, {markerPosition.lat.toFixed(4)}
             </p>
-            <button 
+            <button
               onClick={removeMarker}
               className="w-full px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
             >

@@ -55,20 +55,18 @@ interface GeoContext extends Party.ConnectionContext {
 }
 
 
+// When a user first goes to the URL
 export default class Server implements Party.Server {
     constructor(readonly room: Party.Room) { }
     async onConnect(conn: Party.Connection, ctx: GeoContext) {
+        // If the person is the first person to join the room, make them host
         if (this.room.connections.size === 1) {
-            // A websocket just connected!
-            console.log(
-                `Connected:
-                    id: ${conn.id}
-                    room: ${this.room.id}
-                    url: ${new URL(ctx.request.url).pathname}`
-            );
+            // Set them as host
             let newHost: Host = {id: conn.id}; 
+            // Store it
             await this.room.storage.put("host", newHost);
             // If we are the first connection, we are the host and we don't need to do anything else
+            // Let them know
             conn.send(JSON.stringify(
                 {
                     "type": "PLAYER_JOINED",
@@ -77,13 +75,17 @@ export default class Server implements Party.Server {
                 }));
             return;
         }
+        // If we are here, we are adding a player, not a host
 
+        // Get red team, initilaise as empty if not there
         let redTeam: TeamData =
             (await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 });
 
+        // Get blue team, initilaise as empty if not there
         let blueTeam: TeamData =
             (await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 });
 
+        // Store them
         await this.room.storage.put("redTeam", redTeam);
         await this.room.storage.put("blueTeam", blueTeam);
 
@@ -96,6 +98,7 @@ export default class Server implements Party.Server {
 
     }
 
+    // Not sure what this does tbh
     async onRequest(req: Party.Request): Promise<Response> {
         // Handle different HTTP methods
         if (req.method === "GET") {
@@ -114,88 +117,102 @@ export default class Server implements Party.Server {
         "type": ONE OF: "hostCommand", "guess", "joinTeam"
         "answer": (lat, long, date) | TeamType | null
     }
+
+    This fun handles messages sent from the front end
     */
     async onMessage(message: string, sender: Party.Connection) {
-        // let's log the message
-        // console.log(`connection ${sender.id} sent message: ${message}`);
-
+        // We pass messages with class and civility: JSON
         let message_json = JSON.parse(message);
+        // Get the Host
         let host: Host = await this.room.storage.get("host") ?? {id: ""};
-        if (message_json.type == "hostCommand" && sender.id === host.id ) {
+
+        // If the message is a host command and the sender id is the host...
+        if (message_json.type == "HOST_COMMAND" && sender.id === host.id ) {
+            // ... then handle the command
             this.handleHostCommand(message_json.content, sender.id);
         }
 
-        else if (message_json == "guess") {
+        // If we are recieveing a message containing a guess, handle it
+        else if (message_json.type == "guess") {
+            // Get the current question so we can compare to the guess
             let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
+            // L OL
             if (currentQ === undefined) return;
+            // Break it down
             let cLat: number = currentQ.lat;
             let cLong: number = currentQ.long;
-            let cYear: number = currentQ.year;
-            this.handleGuess(JSON.stringify(message_json.answer), cLong , cLat, cYear, sender.id);
+            // Pass all that to update scores
+            let cYear: number = currentQ.year; this.handleGuess(JSON.stringify(message_json.answer), cLong , cLat, cYear, sender.id);
         }
 
-        else if (message_json == "joinTeam") {
-            let team: TeamType = message_json.answer;
+        // If we are handling a player joining a team, add them
+        else if (message_json.type == "JOIN_TEAM") {
+            // Answer contains the team to join as "blue" or "red" (sorry tom no ENUMS)
+            let team: string = message_json.answer;
             let thisPlayer: PlayerData= {
                 id: sender.id,
+                // Place holder ass name
                 name: "NAMe",
+                // readable
                 isBlue: team === TeamType.Blue,
                 cumScore: 0,
                 isHost: false 
             }
-                    
-            if (team === TeamType.Blue) {
+
+            // Add to relevant teamk
+            if (team === "blue") {
+                // Grab em or make em
                 let blues: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
+                // Push it push it
                 blues.players.push(thisPlayer);
+                // Store it (inshallah it updates)
                 await this.room.storage.put("blueTeam", blues);
-            } else {
+            // same here
+            } else if (team === "red" ){
                 let reds: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
                 reds.players.push(thisPlayer);
                 await this.room.storage.put("redTeam", reds);
             }
-
+            // Update the FSM for front end
+            this.room.broadcast(JSON.stringify({ "type": "CLIENT_WAIT_FOR_START" }));
         }
 
-        this.room.broadcast(
-            `${sender.id}: ${message}`,
-            // ...except for the connection it came from
-            [sender.id]
-        );
     }
 
-    /*
-    async onClose(connection: Party.Connection) {
-        this.room.storage.delete("host");
-    }
-        */
-
-
+    // Helper function to handle a host command
     async handleHostCommand(cmd: string, id: string): Promise<void> {
+        // cmd contains the body of the JSON
         switch (cmd) {
-                case "startGame":
+                // Logic for starting the game
+                case "GAME_START":
+                    // Set current question to 0
                     await this.room.storage.put("questionNum", 0);
+                    // Get the next q? why? 
                     var q = await this.getNextQuestion();
-                    this.room.broadcast(
-                        `Next Questions" ${q.img}`,
-                        // ...except for the connection it came from
-                        [id]
-                    );
+                    // Send updates to front end andys
+                    this.room.broadcast(JSON.stringify({ "type": "NEW_QUESTION" }));
+                    // Give them the img url
+                    this.room.broadcast(JSON.stringify({ "type": "QUESTION", "img": q.img }));
                     break;
+                // Put the question in the bag bro
                 case "nextQuestion":
+                    // Get the next q
                     var q = await this.getNextQuestion();
+                    // TOOD
                     this.room.broadcast(
                         `Next Questions" ${q.img}`,
                         // ...except for the connection it came from
                         [id]
                     );
                     break;
+
+                // End the round, show the correct answer
                 case "endRound":
-                    let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
-                    let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
-                    
-                    // Show correct answer
+                    // Get correct answer
                     let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
 
+
+                    // Give it to front end boys
                     this.room.broadcast(
                         JSON.stringify(currentQ),
                         // ...except for the connection it came from
