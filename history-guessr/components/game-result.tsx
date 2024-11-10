@@ -6,6 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import PartySocket from 'partysocket';
+import { haversineDistance } from '@/party/utils';
 
 mapboxgl.accessToken = "pk.eyJ1Ijoia2hvbmd1eWVucGhhbSIsImEiOiJjbTNhaDY1dmQxOXN6MmxyNjZheW91NjM0In0.3zt1-I2kEcZ2plvSktUkoA";
 
@@ -14,9 +15,11 @@ interface GameResultProps {
   historicEvent: HistoricEvent;
   guessLng: number;
   guessLat: number;
+  guessYear: number;
   year: number;
   location: number;
   total: number;
+  
 }
 
 // Function to calculate the distance using the Haversine formula
@@ -39,15 +42,17 @@ export default function ClientResultPage({
   guessLat,
   year,
   location,
-  total
+  total,
+  guessYear
 }: GameResultProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const guess = [guessLng, guessLat] as [number, number];
   const actualLocation = [historicEvent.long, historicEvent.lat] as [number, number];
+  const GuessYear = guessYear
 
-  const distance = calculateDistance(guessLat, guessLng, historicEvent.lat, historicEvent.long).toFixed(1);
-  const yearDifference = Math.abs(year - historicEvent.year);
+  const distance = Math.round(haversineDistance(historicEvent.lat, historicEvent.long, guessLat, guessLng));
+  const yearDifference = Math.abs((GuessYear || 0) - historicEvent.year);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -99,7 +104,7 @@ export default function ClientResultPage({
     });
 
     return () => map.current?.remove();
-  }, [guess, actualLocation]);
+  }, [guess, actualLocation, guessYear]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-4 md:p-8">
@@ -107,7 +112,7 @@ export default function ClientResultPage({
         {/* Left side - Historic Event Details */}
         <Card className="overflow-hidden bg-gray-800 border-gray-700 shadow-xl">
           <CardContent className="p-6 space-y-4">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-white text-muted-foreground">
               {historicEvent.desc}
             </div>
             <h1 className="text-2xl font-bold text-blue-500">
@@ -117,14 +122,14 @@ export default function ClientResultPage({
               <div className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-md">
                 {historicEvent.year}
               </div>
-              <div className="text-xl">You were {yearDifference} years off</div>
+              <div className="text-xl text-white">You were {yearDifference} years off</div>
             </div>
             <img
               src={historicEvent.img}
               alt={historicEvent.name}
               className="w-full rounded-lg"
             />
-            <div className="text-xl">
+            <div className="text-xl text-white">
               Your guess was <span className="text-blue-500">{distance}</span> from the correct location
             </div>
           </CardContent>
@@ -141,21 +146,21 @@ export default function ClientResultPage({
             <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-lg font-semibold">Year</div>
+                  <div className="text-lg text-white font-semibold">Year</div>
                   <div className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-md">
                     {year}
                   </div>
                   <div className="text-sm text-muted-foreground">/5000</div>
                 </div>
                 <div>
-                  <div className="text-lg font-semibold">Location</div>
+                  <div className="text-lg text-white font-semibold">Location</div>
                   <div className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-md">
                     {location}
                   </div>
                   <div className="text-sm text-muted-foreground">/5000</div>
                 </div>
                 <div>
-                  <div className="text-lg font-semibold">Total</div>
+                  <div className="text-lg  text-white font-semibold">Total</div>
                   <div className="bg-blue-500 text-white px-4 py-2 rounded-full shadow-md">
                     {total}
                   </div>

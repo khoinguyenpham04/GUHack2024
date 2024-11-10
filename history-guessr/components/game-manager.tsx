@@ -33,6 +33,7 @@ export function GameManager({ gameId }: { gameId: string }) {
     const [totScore, setTotScore] = useState<number>(0);
     const [guessLat, setGuessLat] = useState<number>(0);
     const [guessLng, setGuessLng] = useState<number>(0);
+    const [guessYear, setGuessYear] = useState<number>(1950);
     
     const handleNextRound = () => {
         setCurrentRound(prevRoundNum => prevRoundNum + 1);
@@ -95,14 +96,15 @@ export function GameManager({ gameId }: { gameId: string }) {
                     break;
 
                 case "DISPLAY_ANSWERS":
-                    const { historicEvent, guessLng, guessLat, year, location, total } = dataReceived;
+                    const { historicEvent, guessLng, guessLat, guessYear, year, location, total } = dataReceived;
                     setHEvent(historicEvent);
                     setGuessLng(guessLng);
                     setGuessLat(guessLat);
                     setYearScore(year);
                     setLocScore(Math.trunc (location));
                     setTotScore(Math.trunc (total));
-                    
+                    setGuessYear(guessYear);
+
                     setGameState(GameState.DISPLAY_ANSWERS);
                     
                     break;

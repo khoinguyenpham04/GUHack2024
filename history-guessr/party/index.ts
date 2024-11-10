@@ -171,6 +171,7 @@ export default class Server implements Party.Server {
                     "historicEvent": currentQ,
                     "guessLng": message_json.answer.long,
                     "guessLat": message_json.answer.lat,
+                    "guessYear": message_json.answer.year,
                     "year": dateScore,
                     "location": distanceScore,
                     "total": dateScore + distanceScore
