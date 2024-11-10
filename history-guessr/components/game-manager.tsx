@@ -143,7 +143,7 @@ export function GameManager({ gameId }: { gameId: string }) {
     }
 
     if (gameState === GameState.DISPLAY_ANSWERS) {
-        return <ClientResultPage gameSocket={gameSocket} historicEvent={hevent} guessLng={guessLng} guessLat={guessLat} year={yearScore} location={locScore} total={totScore} />;
+        return <ClientResultPage gameSocket={gameSocket} historicEvent={hevent} guessLng={guessLng} guessLat={guessLat} year={yearScore} location={locScore} total={totScore} guessYear={guessYear} />;
     }
 
     if (gameState === GameState.HOST_QUESTION) {
