@@ -10,7 +10,7 @@ export function GameNotFound() {
         Game Not Found
       </h1>
       <p className="mb-8 text-xl text-gray-600 dark:text-gray-300">
-        Oops! The game you're looking for seems to be missing.
+        Oops! The game you&apos;re looking for seems to be missing.
       </p>
       <Button asChild className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-opacity-90 dark:hover:bg-opacity-90 transition-all duration-300 ease-in-out shadow-lg hover:shadow-xl rounded-full px-8 py-3 text-lg font-semibold backdrop-blur-sm bg-opacity-50 dark:bg-opacity-50">
         <Link href="/">

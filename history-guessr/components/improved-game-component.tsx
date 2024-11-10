@@ -31,7 +31,7 @@ export function ClientGamePage({
   // const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
   const [markerPosition, setMarkerPosition] = useState<{ lng: number, lat: number } | null>(null)
   const validImageUrl = typeof imageUrl === "string" && imageUrl.trim() !== "";
-
+  
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const marker = useRef<mapboxgl.Marker | null>(null);
@@ -45,10 +45,10 @@ export function ClientGamePage({
     if (lng === null && lat === null) {
       setLat(0)
       setLng(0)
-    }
-    gameSocket.send(JSON.stringify({ type: "GUESS", answer: { lat: lat, long: lng, year: year } }))
+    } 
+    gameSocket.send(JSON.stringify({ type: "GUESS", answer:{lat:lat, long:lng, year:year}}))
   };
-
+ 
   useEffect(() => {
     // Wait for the page and container to load before initializing the map
     const handlePageLoad = () => {
@@ -113,20 +113,20 @@ export function ClientGamePage({
         {/* Left side - Historical Image */}
         <Card className="overflow-hidden bg-gray-800 border-gray-700 shadow-xl">
           <CardContent className="p-0">
-            <div className="relative w-full pt-8"> {/* Added padding here */}
-              <div className="aspect-video w-full">
-                {validImageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt="Quiz question image"
-                    className="w-full h-full object-contain rounded-t-lg"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full bg-gray-700">
-                    <p className="text-gray-400">Image not available</p>
-                  </div>
-                )}
-              </div>
+            <div className="relative aspect-video w-full">
+              {validImageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt="Quiz question image"
+                  layout="fill"
+                  objectFit="cover"
+                  className="rounded-t-lg"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full bg-gray-700">
+                  <p className="text-gray-400">Image not available</p>
+                </div>
+              )}
             </div>
             <div className="p-6 space-y-6">
               <div className="flex justify-between items-center text-gray-200">
@@ -142,7 +142,6 @@ export function ClientGamePage({
             </div>
           </CardContent>
         </Card>
-
 
         {/* Right side - Map and Slider */}
         <div className="space-y-6">

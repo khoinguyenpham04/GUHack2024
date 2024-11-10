@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import Image from "next/image"
-import Link from "next/link"
+
+
 import { joinGame, createGame } from "./actions/landingPageActions"
 import { AnimatedTestimonialsDemo } from "@/components/sliding-images"
 
@@ -19,7 +19,7 @@ export default function Home() {
         </div>
         <div className="flex flex-col items-center space-y-8">
           <h1 className="text-4xl md:text-5xl font-bold text-center bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">
-            Yesterday's Stories, Today's Challenge.
+            Yesterday&apos;s Stories, Today&apos;s Challenge.
           </h1>
           <p className="text-xl text-center text-gray-300 mt-4 mb-8">
             Travel Through Time, Test Your Knowledge, Challenge Your Friends!

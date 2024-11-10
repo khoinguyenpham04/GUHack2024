@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import PartySocket from "partysocket"
+import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
 
 interface Player {
   id: number
@@ -21,13 +22,36 @@ interface GameLobbyProps {
 
 export default function HostLobby({
   roomCode = "...",
-  blueTeam = Array(12).fill({ id: 1, name: "player 1" }),
-  redTeam = Array(12).fill({ id: 1, name: "player 1" }),
   gameSocket,
 }: GameLobbyProps) {
+  const [redTeam, setRedTeam] = useState<Player[]>([]);
+  const [blueTeam, setBlueTeam] = useState<Player[]>([]);
+  const onStart = () => gameSocket.send(JSON.stringify({ type: "HOST_COMMAND", content: "GAME_START"}));
+  
+  const rdmName: string = uniqueNamesGenerator({
+    dictionaries: [adjectives, colors, animals]
+  });
+  // Randomly add a player to red or blue team
 
-  const onStart = () => gameSocket.send(JSON.stringify({ type: "HOST_COMMAND", content: "GAME_START"}))
+  const getRandomInt = (max: number): number => {
+    return Math.floor(Math.random() * max);
+  }
 
+  function addTeam() {
+    console.log("Adding player to team");
+    if (getRandomInt(2) === 0) {
+      setRedTeam([...redTeam, { id: 1, name: rdmName }]);
+    } else {  
+      setBlueTeam([...blueTeam, { id: 1, name: rdmName }]);
+    }
+  }
+
+  setTimeout(addTeam, getRandomInt(5) * 2000);
+  
+
+  
+
+  
   return (
     <div className="w-full max-w-4xl mx-auto p-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
       <div className="flex items-center justify-between mb-12">
@@ -73,6 +97,7 @@ function TeamSection({
   team: Player[]
   color: "red" | "blue"
 }) {
+  
   return (
     <Card className={`p-6 ${color === "blue" ? "bg-gradient-to-br from-blue-100 to-blue-200" : "bg-gradient-to-br from-red-100 to-red-200"} rounded-2xl shadow-xl`}>
       <h2 className={`text-2xl font-bold mb-4 ${color === "blue" ? "text-blue-800" : "text-red-800"}`}>

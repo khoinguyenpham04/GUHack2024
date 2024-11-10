@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import PartySocket from "partysocket"
-import { GameResult } from "./game-result"
+//import { GameResult } from "./game-result"
 import { ClientGamePage } from "./game-page"
 
 interface TeamSelectionProps {

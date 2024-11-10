@@ -5,9 +5,10 @@ import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Flag } from "lucide-react"
 import PartySocket from "partysocket"
+import { Button } from "./ui/button"
 
 interface Player {
-  id:string
+  id: string
   name: string
   score: number
   team: 'red' | 'blue'
@@ -16,15 +17,16 @@ interface Player {
 interface QuizDisplayProps {
   gameSocket: PartySocket,
   imageUrl?: string | null
+  roundNum?: number
 }
 
 
 
 export function QuizDisplay({
   gameSocket,
-  imageUrl
+  imageUrl,
+  roundNum
 }: QuizDisplayProps) {
-  const [currentRound, setCurrentRound] = useState(0)
   const totalRounds = 5
   const [players, setPlayers] = useState<Player[]>([]);
 
@@ -34,6 +36,8 @@ export function QuizDisplay({
   const maxProgress = Math.max(redProgress, blueProgress)
   const progressColor = redProgress > blueProgress ? 'from-red-500 to-red-600' : 'from-blue-500 to-blue-600'
   const validImageUrl = typeof imageUrl === "string" && imageUrl.trim() !== "";
+
+  const onNextQuestion = () => gameSocket.send(JSON.stringify({ type: "HOST_COMMAND", content: "NEXT_QUESTION" }))
 
   useEffect(() => {
     const handleWebSocketMessage = (event: MessageEvent) => {
@@ -76,7 +80,7 @@ export function QuizDisplay({
     return () => {
       gameSocket.removeEventListener("message", handleWebSocketMessage);
     };
-  }, [gameSocket]);
+  }, [gameSocket,roundNum]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -84,9 +88,17 @@ export function QuizDisplay({
         {/* Round Counter */}
         <div className="flex justify-center">
           <div className="bg-white bg-opacity-80 backdrop-blur-md rounded-full px-8 py-3 text-3xl font-bold text-gray-800 shadow-lg">
-            Round {currentRound} / {totalRounds}
+            Round {roundNum} / {totalRounds}
           </div>
+          <Button
+            size="lg"
+            className="ml-8 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-lg transition-all duration-300 ease-in-out"
+            onClick={onNextQuestion}
+          >
+            Next Question
+          </Button>
         </div>
+
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Image Section */}
@@ -115,11 +127,10 @@ export function QuizDisplay({
                   players.map((player, index) => (
                     <div
                       key={player.id}
-                      className={`p-4 rounded-xl text-white font-semibold flex justify-between items-center shadow-md transition-transform duration-300 ${
-                        player.team === 'blue'
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                          : 'bg-gradient-to-r from-red-500 to-red-600'
-                      }`}
+                      className={`p-4 rounded-xl text-white font-semibold flex justify-between items-center shadow-md transition-transform duration-300 ${player.team === 'blue'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                        : 'bg-gradient-to-r from-red-500 to-red-600'
+                        }`}
                       style={{ transform: `translateY(${index * 10}px)` }}
                     >
                       <span className="text-lg">{player.name}</span>

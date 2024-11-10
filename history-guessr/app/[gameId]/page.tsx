@@ -1,11 +1,7 @@
 'use client'
 
 import { GameNotFound } from "@/components/game-not-found";
-import { TeamSelection } from "@/components/team-selection";
-import { ClientGamePage as GamePageComponent } from "@/components/game-page";
-import { GameResult } from "@/components/game-result";
 import { GameManager } from "@/components/game-manager";
-import HostLobby from "@/components/host-lobby";
 
 const isValidId = (id: string) => {
   const regex = /^[a-zA-Z0-9]{8}$/;

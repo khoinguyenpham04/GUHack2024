@@ -1,6 +1,6 @@
 import type * as Party from "partykit/server";
 import { historicEvents, HistoricEvent } from './data';
-import { calculateUserScore } from "./utils";
+import { calculateUserScore, haversineDistance, dateDifference} from "./utils";
 import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
 import { json } from "stream/consumers";
 
@@ -41,7 +41,7 @@ export type PlayerData = {
     isBlue: boolean;
     cumScore: number;
     isHost: boolean;
-    mostRecentGuessScore?: number;
+    mostRecentGuessScore: number;
 }
 
 export type TeamData = {
@@ -141,7 +141,6 @@ export default class Server implements Party.Server {
 
         // If we are recieveing a message containing a guess, handle it
         else if (message_json.type == "GUESS") {
-            sender.send(JSON.stringify({ "type": "CLIENT_WAIT_FOR_START" }));
             // Get the current question so we can compare to the guess
             let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
             // L OL
@@ -152,6 +151,31 @@ export default class Server implements Party.Server {
             let cYear: number = currentQ.year;
             // Pass all that to update scores
             this.handleGuess(JSON.stringify(message_json.answer), cLong, cLat, cYear, sender.id);
+            const guessLong = message_json.answer.long;
+            const guessLat = message_json.answer.lat;
+            const guessDate = message_json.answer.year;
+
+            const MAX_SCORE  =1000;
+            const distance = haversineDistance(cLat, cLong, guessLat, guessLong);
+            const maxDistance = 20020; // Maximum distance between two points on Earth
+            const distanceScore = Math.max(0, MAX_SCORE - (distance / maxDistance) * MAX_SCORE);
+
+            const dateDiff = dateDifference(cYear, guessDate);
+            const maxDateDiff = 100;
+            const dateScore = Math.max(0, MAX_SCORE - (dateDiff / maxDateDiff) * MAX_SCORE);
+
+
+            sender.send(JSON.stringify(
+                {
+                    "type": "DISPLAY_ANSWERS",
+                    "historicEvent": currentQ,
+                    "guessLng": message_json.answer.long,
+                    "guessLat": message_json.answer.lat,
+                    "year": dateScore,
+                    "location": distanceScore,
+                    "total": dateScore + distanceScore
+                }
+            ));
 
             let red: TeamData =
                 (await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 });
@@ -189,7 +213,7 @@ export default class Server implements Party.Server {
                 // Place holder ass name
                 name: rdmName,
                 // readable
-                isBlue: team === TeamType.Blue,
+                isBlue: team === "blue",
                 cumScore: 0,
                 mostRecentGuessScore: 0,
                 isHost: false
@@ -213,9 +237,17 @@ export default class Server implements Party.Server {
             sender.send(JSON.stringify({ "type": "CLIENT_WAIT_FOR_START" }));
         }
 
+        else if (message_json.type == "GET_TEAMS") {
+            
+        }
+
+        else if (message_json.type == "DISPLAY_ANSWERS") {
+
+        }
+
     }
 
-    async getCurrentPlayerDetails(id: string): Promise<string> {
+    async getCurrentPlayerDetails(id: string): Promise<object> {
         // Retrieve teams from storage
         let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
         let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
@@ -284,15 +316,14 @@ export default class Server implements Party.Server {
                 this.room.broadcast(JSON.stringify({ "type": "QUESTION", "img": q.img }));
                 break;
             // Put the question in the bag bro
-            case "nextQuestion":
+            case "NEXT_QUESTION":
+
                 // Get the next q
                 var q = await this.getNextQuestion();
-                // TOOD
-                this.room.broadcast(
-                    `Next Questions" ${q.img}`,
-                    // ...except for the connection it came from
-                    [id]
-                );
+                // Send updates to front end andys
+                this.room.broadcast(JSON.stringify({ "type": "NEW_QUESTION" }));
+                // Give them the img url
+                this.room.broadcast(JSON.stringify({ "type": "QUESTION", "img": q.img }));
                 break;
 
             // End the round, show the correct answer
