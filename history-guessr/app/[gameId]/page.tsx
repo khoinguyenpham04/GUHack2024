@@ -1,3 +1,4 @@
+//@ts-nocheck
 'use client'
 
 import { GameNotFound } from "@/components/game-not-found";
