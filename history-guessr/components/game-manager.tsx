@@ -40,7 +40,7 @@ export function GameManager({ gameId }: { gameId: string }) {
     };
 
     const gameSocket = usePartySocket({
-        host: "localhost:1984",
+        host: "PARTYKIT_HOST",
         room: gameId,
 
         onMessage(event) {

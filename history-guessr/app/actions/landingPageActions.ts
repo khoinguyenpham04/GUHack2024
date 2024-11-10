@@ -2,19 +2,20 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { PARTYKIT_URL } from "../env";
 
 export async function joinGame(gameId: string) {
-  // const res = await fetch(`${"TODO"}/party/${gameId}`, {
-  //   method: "POST",
-  //   body: JSON.stringify({ type: "ALIVE-QUERY" }),
-  //   headers: {
-  //     "Content-Type": "application/json"
-  //   }
-  // });
+  const res = await fetch(`${PARTYKIT_URL}/party/${gameId}`, {
+    method: "POST",
+    body: JSON.stringify({ type: "ALIVE-QUERY" }),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
 
-  // if (res.status !== 200) {
-  //   redirect("/invalid");
-  // }
+  if (res.status !== 200) {
+    redirect("/invalid");
+  }
   redirect(`/${gameId}`);
 }
 
