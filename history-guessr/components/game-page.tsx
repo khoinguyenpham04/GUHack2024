@@ -18,96 +18,91 @@ export function ClientGamePage({
   gameSocket,
   imageUrl
 }: ClientGamePageProps) {
-  const mapContainer = useRef(null)
-  const map = useRef<mapboxgl.Map | null>(null)
-  const [year, setYear] = useState(1962)
-  const [lng, setLng] = useState(-70.9)
-  const [lat, setLat] = useState(42.35)
-  const [zoom, setZoom] = useState(3)
-  const [marker, setMarker] = useState<mapboxgl.Marker | null>(null)
+  // const mapContainer = useRef<HTMLDivElement>(null);
+  // const mapContainerRef = useRef(null);
+  // const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [year, setYear] = useState(1962);
+  const [lng, setLng] = useState<number | null>(null); // Initialize as null
+  const [lat, setLat] = useState<number | null>(null); // Initialize as null
+  // const [zoom, setZoom] = useState(3);
+  // const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
   const [markerPosition, setMarkerPosition] = useState<{ lng: number, lat: number } | null>(null)
   const validImageUrl = typeof imageUrl === "string" && imageUrl.trim() !== "";
+  
+  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const marker = useRef<mapboxgl.Marker | null>(null);
+  const updateCoords = (lng: number, lat: number) => {
+    setLng(lng)
+    setLat(lat)
+    console.log(lat)
+  }
 
-  useEffect(() => {
-    if (map.current || !mapContainer.current) return; // initialize map only once and ensure container exists
-
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current as HTMLElement,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [lng, lat],
-      zoom: zoom
-    });
-
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-    // Update state on map move
-    map.current.on('move', () => {
-      if (!map.current) return;
-
-      setLng(Number(map.current.getCenter().lng.toFixed(4)));
-      setLat(Number(map.current.getCenter().lat.toFixed(4)));
-      setZoom(Number(map.current.getZoom().toFixed(2)));
-    });
-
-    // Add click handler to map
-    map.current.on('click', (e) => {
-      // First, remove any existing marker and clean up state
-      if (marker) {
-        marker.remove();
-        setMarker(null);
-        setMarkerPosition(null);
-      }
-
-      // Create new marker after a short delay to ensure cleanup is complete
-      setTimeout(() => {
-        const newMarker = new mapboxgl.Marker({
-          color: "#FF0000",
-          draggable: true
-        })
-          .setLngLat([e.lngLat.lng, e.lngLat.lat])
-          .addTo(map.current!);
-
-        // Update marker position state
-        setMarkerPosition({
-          lng: e.lngLat.lng,
-          lat: e.lngLat.lat
-        });
-
-        // Add dragend event listener to marker
-        newMarker.on('dragend', () => {
-          const position = newMarker.getLngLat();
-          setMarkerPosition({
-            lng: position.lng,
-            lat: position.lat
-          });
-        });
-
-        // Store the new marker in state
-        setMarker(newMarker);
-      }, 0);
-    });
-
-    // Cleanup function to remove map on unmount
-    return () => {
-      if (marker) {
-        marker.remove();
-      }
-      if (map.current) {
-        map.current.remove();
-      }
-    };
-  }, []); // Empty dependency array since we only want to initialize once
-
-  // First, add a function to handle marker removal
-  const removeMarker = () => {
-    if (marker) {
-      marker.remove();
-      setMarker(null);
-      setMarkerPosition(null);
-    }
+  const handleSubmit = () => {
+    if (lng === null && lat === null) {
+      setLat(0)
+      setLng(0)
+    } 
+    gameSocket.send(JSON.stringify({ type: "GUESS", answer:{lat:lat, long:lng, year:year}}))
   };
+ 
+  useEffect(() => {
+    // Wait for the page and container to load before initializing the map
+    const handlePageLoad = () => {
+      if (!mapContainer.current) return;
+
+      // Initialize the map
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: [0, 0],
+        zoom: 2,
+        maxZoom: 15,
+      });
+
+      // Add zoom controls
+      map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+      // Wait for the map to fully load before adding markers or other interactions
+      map.current.on("load", () => {
+        // Function to add or move the marker on map click
+        const addMarker = (event: mapboxgl.MapMouseEvent) => {
+          const coordinates = event.lngLat;
+
+          // If marker doesn't exist, create one. Otherwise, move it to the new position
+          if (!marker.current) {
+            marker.current = new mapboxgl.Marker({ color: "#FF0000" })
+              .setLngLat(coordinates)
+              .addTo(map.current!);
+          } else {
+            marker.current.setLngLat(coordinates);
+          }
+
+          // Update states with the marker's current position
+          setLng(coordinates.lng);
+          setLat(coordinates.lat);
+          setMarkerPosition({ lng: coordinates.lng, lat: coordinates.lat });
+
+        };
+
+        // Attach the click event to the map
+        map.current?.on("click", addMarker);
+      });
+    };
+
+    // Wait for the document to fully load before proceeding
+    if (document.readyState === "complete") {
+      handlePageLoad();
+    } else {
+      window.addEventListener("load", handlePageLoad);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener("load", handlePageLoad);
+      if (map.current) map.current.remove();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen grid grid-cols-2 gap-4 p-4">
@@ -133,7 +128,7 @@ export function ClientGamePage({
               <div className="text-lg font-semibold">Round 1/5</div>
               <div className="text-lg">Score: 0</div>
             </div>
-            <button className="w-full h-[44px] bg-blue-500 text-white font-medium rounded-full shadow-md hover:bg-blue-600 active:bg-blue-700 transition-colors duration-200 backdrop-blur-sm text-[17px]">
+            <button onClick={handleSubmit} className="w-full h-[44px] bg-blue-500 text-white font-medium rounded-full shadow-md hover:bg-blue-600 active:bg-blue-700 transition-colors duration-200 backdrop-blur-sm text-[17px]">
               Submit Guess
             </button>
           </div>
@@ -143,21 +138,6 @@ export function ClientGamePage({
       {/* Right side - Map and Slider */}
       <div className="relative flex flex-col gap-4">
         <div ref={mapContainer} className="flex-1 rounded-lg overflow-hidden" />
-
-        {/* Show marker position and remove button when marker exists */}
-        {markerPosition && (
-          <div className="absolute top-4 left-4 bg-white/90 p-2 rounded-md shadow-md space-y-2">
-            <p className="text-sm font-mono">
-              Marker position: {markerPosition.lng.toFixed(4)}, {markerPosition.lat.toFixed(4)}
-            </p>
-            <button
-              onClick={removeMarker}
-              className="w-full px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-            >
-              Remove Marker
-            </button>
-          </div>
-        )}
 
         <input
           type="range"

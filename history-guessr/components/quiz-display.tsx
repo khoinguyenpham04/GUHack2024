@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Flag } from "lucide-react"
@@ -25,21 +25,45 @@ export function QuizDisplay({
 }: QuizDisplayProps) {
   const [currentRound, setCurrentRound] = useState(0)
   const totalRounds = 5
-  const [players, setPlayers] = useState<Player[]>([
-    { name: "Player 1", score: 5000, team: 'blue' },
-    { name: "Player 2", score: 5000, team: 'red' },
-    { name: "Player 3", score: 0, team: 'red' },
-    { name: "Player 4", score: 4, team: 'red' },
-    { name: "Player 5", score: 0, team: 'red' },
-    { name: "Player 6", score: 2, team: 'red' },
-    { name: "Player 7", score: 0, team: 'red' },
-  ])
+  const [players, setPlayers] = useState<Player[]>([]);
 
-  const [redProgress, setRedProgress] = useState(90)
-  const [blueProgress, setBlueProgress] = useState(40)
+
+  const [redProgress, setRedProgress] = useState(0)
+  const [blueProgress, setBlueProgress] = useState(0)
   const maxProgress = Math.max(redProgress, blueProgress)
   const progressColor = redProgress > blueProgress ? 'from-red-500 to-red-600' : 'from-blue-500 to-blue-600'
   const validImageUrl = typeof imageUrl === "string" && imageUrl.trim() !== "";
+
+  useEffect(() => {
+    const handleWebSocketMessage = (event: MessageEvent) => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === "PROGRESS_UPDATE") {
+        console.log(message.data);
+
+        // Update the progress state
+        setRedProgress(message.redProgress);
+        setBlueProgress(message.blueProgress);
+      }
+      if (message.type === "TOP_5") {
+        console.log(message.content)
+
+        // Extract the top 5 players data from the message
+        const { topPlayers } = message.content;
+
+        // Update the players state to display the top 5 players
+        setPlayers(topPlayers);
+      }
+    };
+
+    // Attach the WebSocket event listener
+    gameSocket.addEventListener("message", handleWebSocketMessage);
+
+    // Clean up the event listener on component unmount
+    return () => {
+      gameSocket.removeEventListener("message", handleWebSocketMessage);
+    };
+  }, [gameSocket]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -74,19 +98,25 @@ export function QuizDisplay({
             <div className="p-6">
               <h2 className="text-3xl font-bold text-gray-800 mb-6">Top Scores</h2>
               <div className="space-y-3">
-                {players
-                  .sort((a, b) => b.score - a.score)
-                  .slice(0, 5)
-                  .map((player, index) => (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-xl text-white font-semibold flex justify-between items-center shadow-md transition-all duration-300 hover:shadow-lg ${player.team === 'blue' ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-red-500 to-red-600'
-                        }`}
-                    >
-                      <span className="text-lg">{player.name}</span>
-                      <span className="text-2xl">{player.score.toLocaleString()}</span>
-                    </div>
-                  ))}
+                {players.length > 0 ? (
+                  players
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5)
+                    .map((player, index) => (
+                      <div
+                        key={index}
+                        className={`p-4 rounded-xl text-white font-semibold flex justify-between items-center shadow-md transition-all duration-300 hover:shadow-lg ${player.team === 'blue'
+                            ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                            : 'bg-gradient-to-r from-red-500 to-red-600'
+                          }`}
+                      >
+                        <span className="text-lg">{player.name}</span>
+                        <span className="text-2xl">{player.score.toLocaleString()}</span>
+                      </div>
+                    ))
+                ) : (
+                  <p className="text-center text-gray-500 text-lg">No players available</p>
+                )}
               </div>
             </div>
           </Card>

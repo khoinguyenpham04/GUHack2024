@@ -83,6 +83,9 @@ export function GameManager({ gameId }: { gameId: string }) {
                 case "GAME_OVER":
                     setGameState(GameState.GAME_OVER);
                     break;
+                
+                case "UPDATE_PROGRESS":
+                    break;
 
                 default:
                     console.warn("Unknown message type:", type);
@@ -102,6 +105,7 @@ export function GameManager({ gameId }: { gameId: string }) {
 
     if (gameState === GameState.HOST_WAIT_FOR_START) {
         return <HostLobby gameSocket={gameSocket} />;
+        // return <ClientGamePage gameSocket={gameSocket} imageUrl={currentImageUrl}/>;
     }
 
     if (gameState === GameState.CLIENT_WAIT_FOR_START) {

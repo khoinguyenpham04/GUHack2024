@@ -1,10 +1,16 @@
 import type * as Party from "partykit/server";
 import { historicEvents, HistoricEvent } from './data';
 import { calculateUserScore } from "./utils";
+import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
+import { json } from "stream/consumers";
+
 
 /*
+
 These define the message types that the server will receive from the client
 */
+
+const NUM_QS = 5;
 
 export enum MessageType {
     HostCommand = "hostCommand",
@@ -13,7 +19,6 @@ export enum MessageType {
 }
 
 export type Answer = {
-    questionNumber: number;
     lat: number;
     long: number;
     year: number;
@@ -73,6 +78,7 @@ export default class Server implements Party.Server {
                     "host": true
 
                 }));
+            // xddd
             return;
         }
         // If we are here, we are adding a player, not a host
@@ -133,7 +139,8 @@ export default class Server implements Party.Server {
         }
 
         // If we are recieveing a message containing a guess, handle it
-        else if (message_json.type == "guess") {
+        else if (message_json.type == "GUESS") {
+            this.room.broadcast(JSON.stringify({"type": "CLIENT_WAIT_FOR_START"}));
             // Get the current question so we can compare to the guess
             let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
             // L OL
@@ -141,18 +148,40 @@ export default class Server implements Party.Server {
             // Break it down
             let cLat: number = currentQ.lat;
             let cLong: number = currentQ.long;
+            let cYear: number = currentQ.year;
             // Pass all that to update scores
-            let cYear: number = currentQ.year; this.handleGuess(JSON.stringify(message_json.answer), cLong , cLat, cYear, sender.id);
+            this.handleGuess(JSON.stringify(message_json.answer), cLong , cLat, cYear, sender.id);
+
+            let red: TeamData =
+                (await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 });
+
+            // Get blue team, initilaise as empty if not there
+            let blue: TeamData =
+                (await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 });
+
+
+            this.room.broadcast(JSON.stringify(this.calculateProgress(red, blue)));
+
+            this.room.broadcast(JSON.stringify(
+                {
+                    "type": "TOP_5",
+                    "content": this.getNBestPlayers(5)
+                }
+            ));
+
         }
 
         // If we are handling a player joining a team, add them
         else if (message_json.type == "JOIN_TEAM") {
             // Answer contains the team to join as "blue" or "red" (sorry tom no ENUMS)
             let team: string = message_json.answer;
+            const rdmName: string = uniqueNamesGenerator({
+                dictionaries: [adjectives, colors, animals]
+              });
             let thisPlayer: PlayerData= {
                 id: sender.id,
                 // Place holder ass name
-                name: "NAMe",
+                name: rdmName,
                 // readable
                 isBlue: team === TeamType.Blue,
                 cumScore: 0,
@@ -176,6 +205,25 @@ export default class Server implements Party.Server {
             // Update the FSM for front end
             this.room.broadcast(JSON.stringify({ "type": "CLIENT_WAIT_FOR_START" }));
         }
+
+    }
+
+    calculateProgress(red: TeamData, blue: TeamData) {
+        let redCount: number = red.players.length;
+        let blueCount: number = blue.players.length;
+
+        let redScore: number = red.score;
+        let blueScore: number = blue.score;
+
+        let redMax: number = 1000 * NUM_QS * redCount;
+        let blueMax: number = 1000 * NUM_QS * blueCount;
+
+        return {
+            "type": "PROGRESS_UPDATE",
+            "redProgress": redMax / redScore,
+            "blueProgress": blueMax / blueScore
+        };
+
 
     }
 
@@ -245,14 +293,15 @@ export default class Server implements Party.Server {
         if (player === undefined) return;
 
         player.cumScore += score;
+        console.log(player);
 
         if (player.isBlue) {
             await this.room.storage.put("blueTeam", blueTeam);
+            console.log(await this.room.storage.get("blueTeam"));
         } else {
             await this.room.storage.put("redTeam", redTeam);
         }
     }
-
     async handleGuess(guess: string, correctLong: number, correctLat: number, correctDate: number, id: string): Promise<void> {
         // Check if the answer is correct
         let guessJSON = JSON.parse(guess);
@@ -264,7 +313,10 @@ export default class Server implements Party.Server {
         if (usrTeam) {
             let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
             blueTeam.score += usrScore;
+            //console.log(blueTeam);
+            // XXX does not update cum score
             this.updateCumScore(id, usrScore);
+            //console.log(blueTeam);
             await this.room.storage.put("blueTeam", blueTeam);
 
         } else {
