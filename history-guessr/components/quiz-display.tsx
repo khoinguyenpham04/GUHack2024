@@ -7,6 +7,7 @@ import { Flag } from "lucide-react"
 import PartySocket from "partysocket"
 
 interface Player {
+  id:string
   name: string
   score: number
   team: 'red' | 'blue'
@@ -39,20 +40,32 @@ export function QuizDisplay({
       const message = JSON.parse(event.data);
 
       if (message.type === "PROGRESS_UPDATE") {
-        console.log(message.data);
+        console.log(message);
 
         // Update the progress state
         setRedProgress(message.redProgress);
         setBlueProgress(message.blueProgress);
       }
-      if (message.type === "TOP_5") {
-        console.log(message.content)
 
-        // Extract the top 5 players data from the message
-        const { topPlayers } = message.content;
+      if (message.type === "PLAYER_SCORE_UPDATE") {
+        const updatedPlayer = message.player
 
-        // Update the players state to display the top 5 players
-        setPlayers(topPlayers);
+        setPlayers(prevPlayers => {
+          // Check if the player already exists
+          const playerExists = prevPlayers.some(player => player.id === updatedPlayer.id);
+
+          // Update the existing player's score or add new player
+          const newPlayers = playerExists
+            ? prevPlayers.map(player =>
+              player.id === updatedPlayer.id ? { ...player, score: updatedPlayer.score } : player
+            )
+            : [...prevPlayers, updatedPlayer];
+
+          // Sort by score and keep only the top 5 players
+          return newPlayers
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5);
+        });
       }
     };
 
@@ -98,22 +111,21 @@ export function QuizDisplay({
             <div className="p-6">
               <h2 className="text-3xl font-bold text-gray-800 mb-6">Top Scores</h2>
               <div className="space-y-3">
-                {players.length > 0 ? (
-                  players
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 5)
-                    .map((player, index) => (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-xl text-white font-semibold flex justify-between items-center shadow-md transition-all duration-300 hover:shadow-lg ${player.team === 'blue'
-                            ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                            : 'bg-gradient-to-r from-red-500 to-red-600'
-                          }`}
-                      >
-                        <span className="text-lg">{player.name}</span>
-                        <span className="text-2xl">{player.score.toLocaleString()}</span>
-                      </div>
-                    ))
+                {players && players.length > 0 ? (
+                  players.map((player, index) => (
+                    <div
+                      key={player.id}
+                      className={`p-4 rounded-xl text-white font-semibold flex justify-between items-center shadow-md transition-transform duration-300 ${
+                        player.team === 'blue'
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                          : 'bg-gradient-to-r from-red-500 to-red-600'
+                      }`}
+                      style={{ transform: `translateY(${index * 10}px)` }}
+                    >
+                      <span className="text-lg">{player.name}</span>
+                      <span className="text-2xl">{player.score.toLocaleString()}</span>
+                    </div>
+                  ))
                 ) : (
                   <p className="text-center text-gray-500 text-lg">No players available</p>
                 )}

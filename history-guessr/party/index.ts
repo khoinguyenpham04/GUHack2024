@@ -41,6 +41,7 @@ export type PlayerData = {
     isBlue: boolean;
     cumScore: number;
     isHost: boolean;
+    mostRecentGuessScore?: number;
 }
 
 export type TeamData = {
@@ -67,7 +68,7 @@ export default class Server implements Party.Server {
         // If the person is the first person to join the room, make them host
         if (this.room.connections.size === 1) {
             // Set them as host
-            let newHost: Host = {id: conn.id}; 
+            let newHost: Host = { id: conn.id };
             // Store it
             await this.room.storage.put("host", newHost);
             // If we are the first connection, we are the host and we don't need to do anything else
@@ -99,7 +100,7 @@ export default class Server implements Party.Server {
         conn.send(JSON.stringify(
             {
                 "type": "PLAYER_JOINED",
-                "host": false 
+                "host": false
             }));
 
     }
@@ -130,17 +131,17 @@ export default class Server implements Party.Server {
         // We pass messages with class and civility: JSON
         let message_json = JSON.parse(message);
         // Get the Host
-        let host: Host = await this.room.storage.get("host") ?? {id: ""};
+        let host: Host = await this.room.storage.get("host") ?? { id: "" };
 
         // If the message is a host command and the sender id is the host...
-        if (message_json.type == "HOST_COMMAND" && sender.id === host.id ) {
+        if (message_json.type == "HOST_COMMAND" && sender.id === host.id) {
             // ... then handle the command
             this.handleHostCommand(message_json.content, sender.id);
         }
 
         // If we are recieveing a message containing a guess, handle it
         else if (message_json.type == "GUESS") {
-            this.room.broadcast(JSON.stringify({"type": "CLIENT_WAIT_FOR_START"}));
+            sender.send(JSON.stringify({ "type": "CLIENT_WAIT_FOR_START" }));
             // Get the current question so we can compare to the guess
             let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
             // L OL
@@ -150,7 +151,7 @@ export default class Server implements Party.Server {
             let cLong: number = currentQ.long;
             let cYear: number = currentQ.year;
             // Pass all that to update scores
-            this.handleGuess(JSON.stringify(message_json.answer), cLong , cLat, cYear, sender.id);
+            this.handleGuess(JSON.stringify(message_json.answer), cLong, cLat, cYear, sender.id);
 
             let red: TeamData =
                 (await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 });
@@ -162,13 +163,18 @@ export default class Server implements Party.Server {
 
             this.room.broadcast(JSON.stringify(this.calculateProgress(red, blue)));
 
-            this.room.broadcast(JSON.stringify(
-                {
-                    "type": "TOP_5",
-                    "content": this.getNBestPlayers(5)
-                }
-            ));
-
+            // const top5Players = await this.getNBestPlayers(5);
+            // this.room.broadcast(JSON.stringify({
+            //     "type": "TOP_5",
+            //     "data": {
+            //         "topPlayers": top5Players
+            //     }
+            // }));
+            const playerDetails = await this.getCurrentPlayerDetails(sender.id);
+            this.room.broadcast(JSON.stringify({
+                "type": "PLAYER_SCORE_UPDATE",
+                "player": playerDetails
+            }));
         }
 
         // If we are handling a player joining a team, add them
@@ -177,15 +183,16 @@ export default class Server implements Party.Server {
             let team: string = message_json.answer;
             const rdmName: string = uniqueNamesGenerator({
                 dictionaries: [adjectives, colors, animals]
-              });
-            let thisPlayer: PlayerData= {
+            });
+            let thisPlayer: PlayerData = {
                 id: sender.id,
                 // Place holder ass name
                 name: rdmName,
                 // readable
                 isBlue: team === TeamType.Blue,
                 cumScore: 0,
-                isHost: false 
+                mostRecentGuessScore: 0,
+                isHost: false
             }
 
             // Add to relevant teamk
@@ -196,32 +203,66 @@ export default class Server implements Party.Server {
                 blues.players.push(thisPlayer);
                 // Store it (inshallah it updates)
                 await this.room.storage.put("blueTeam", blues);
-            // same here
-            } else if (team === "red" ){
+                // same here
+            } else if (team === "red") {
                 let reds: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
                 reds.players.push(thisPlayer);
                 await this.room.storage.put("redTeam", reds);
             }
             // Update the FSM for front end
-            this.room.broadcast(JSON.stringify({ "type": "CLIENT_WAIT_FOR_START" }));
+            sender.send(JSON.stringify({ "type": "CLIENT_WAIT_FOR_START" }));
         }
 
+    }
+
+    async getCurrentPlayerDetails(id: string): Promise<string> {
+        // Retrieve teams from storage
+        let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
+        let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
+
+        // Find the player in the red team or blue team
+        let player = redTeam.players.find(p => p.id === id) || blueTeam.players.find(p => p.id === id);
+
+        // If player is found, return their details as a JSON string
+        if (player) {
+            return {
+                id: player.id,
+                name: player.name,
+                team: player.isBlue ? "blue" : "red",
+                score: player.mostRecentGuessScore ?? null // Default to null if undefined
+            };
+        }
+
+        // Return JSON string with null values if the player is not found
+        return {
+            id: null,
+            name: "Unknown",
+            team: "unknown",
+            score: null
+        };
     }
 
     calculateProgress(red: TeamData, blue: TeamData) {
         let redCount: number = red.players.length;
         let blueCount: number = blue.players.length;
+        console.log(redCount)
 
         let redScore: number = red.score;
         let blueScore: number = blue.score;
+        console.log(redScore)
 
         let redMax: number = 1000 * NUM_QS * redCount;
         let blueMax: number = 1000 * NUM_QS * blueCount;
 
+        let redProgress: number = redScore !== 0 ? redMax / redScore : 0;
+        let blueProgress: number = blueScore !== 0 ? blueMax / blueScore : 0;
+
+        console.log(redProgress)
+
         return {
             "type": "PROGRESS_UPDATE",
-            "redProgress": redMax / redScore,
-            "blueProgress": blueMax / blueScore
+            "redProgress": redProgress,
+            "blueProgress": blueProgress
         };
 
 
@@ -231,47 +272,47 @@ export default class Server implements Party.Server {
     async handleHostCommand(cmd: string, id: string): Promise<void> {
         // cmd contains the body of the JSON
         switch (cmd) {
-                // Logic for starting the game
-                case "GAME_START":
-                    // Set current question to 0
-                    await this.room.storage.put("questionNum", 0);
-                    // Get the next q? why? 
-                    var q = await this.getNextQuestion();
-                    // Send updates to front end andys
-                    this.room.broadcast(JSON.stringify({ "type": "NEW_QUESTION" }));
-                    // Give them the img url
-                    this.room.broadcast(JSON.stringify({ "type": "QUESTION", "img": q.img }));
-                    break;
-                // Put the question in the bag bro
-                case "nextQuestion":
-                    // Get the next q
-                    var q = await this.getNextQuestion();
-                    // TOOD
-                    this.room.broadcast(
-                        `Next Questions" ${q.img}`,
-                        // ...except for the connection it came from
-                        [id]
-                    );
-                    break;
+            // Logic for starting the game
+            case "GAME_START":
+                // Set current question to 0
+                await this.room.storage.put("questionNum", 0);
+                // Get the next q? why? 
+                var q = await this.getNextQuestion();
+                // Send updates to front end andys
+                this.room.broadcast(JSON.stringify({ "type": "NEW_QUESTION" }));
+                // Give them the img url
+                this.room.broadcast(JSON.stringify({ "type": "QUESTION", "img": q.img }));
+                break;
+            // Put the question in the bag bro
+            case "nextQuestion":
+                // Get the next q
+                var q = await this.getNextQuestion();
+                // TOOD
+                this.room.broadcast(
+                    `Next Questions" ${q.img}`,
+                    // ...except for the connection it came from
+                    [id]
+                );
+                break;
 
-                // End the round, show the correct answer
-                case "endRound":
-                    // Get correct answer
-                    let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
+            // End the round, show the correct answer
+            case "endRound":
+                // Get correct answer
+                let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
 
 
-                    // Give it to front end boys
-                    this.room.broadcast(
-                        JSON.stringify(currentQ),
-                        // ...except for the connection it came from
-                        [id]
-                    );
-                    
-                    break;
-            }
+                // Give it to front end boys
+                this.room.broadcast(
+                    JSON.stringify(currentQ),
+                    // ...except for the connection it came from
+                    [id]
+                );
+
+                break;
+        }
     }
-    
-    async getTeamOfPlayer(id: string): Promise<Boolean | undefined>  {
+
+    async getTeamOfPlayer(id: string): Promise<Boolean | undefined> {
         let redTeam: TeamData | undefined = await this.room.storage.get("redTeam");
         let blueTeam: TeamData | undefined = await this.room.storage.get("blueTeam");
 
@@ -283,7 +324,7 @@ export default class Server implements Party.Server {
         return player === undefined ? undefined : player.isBlue;
     }
 
-    async updateCumScore(id: string, score: number) : Promise<void> {
+    async updateCumScore(id: string, score: number): Promise<void> {
         let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
         let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
 
@@ -293,6 +334,7 @@ export default class Server implements Party.Server {
         if (player === undefined) return;
 
         player.cumScore += score;
+        player.mostRecentGuessScore = score;
         console.log(player);
 
         if (player.isBlue) {
@@ -302,12 +344,14 @@ export default class Server implements Party.Server {
             await this.room.storage.put("redTeam", redTeam);
         }
     }
+
+
     async handleGuess(guess: string, correctLong: number, correctLat: number, correctDate: number, id: string): Promise<void> {
         // Check if the answer is correct
         let guessJSON = JSON.parse(guess);
         let usrScore: number = calculateUserScore(correctLat, correctLong, correctDate, guessJSON.lat, guessJSON.long, guessJSON.year);
         // Defaults to red team
-        let usrTeam  = await this.getTeamOfPlayer(id) ?? false;
+        let usrTeam = await this.getTeamOfPlayer(id) ?? false;
 
         // Update the score
         if (usrTeam) {
@@ -320,7 +364,7 @@ export default class Server implements Party.Server {
             await this.room.storage.put("blueTeam", blueTeam);
 
         } else {
-            let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: true, score: 0};
+            let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: true, score: 0 };
             redTeam.score += usrScore;
             this.updateCumScore(id, usrScore);
             await this.room.storage.put("redTeam", redTeam);
@@ -331,9 +375,18 @@ export default class Server implements Party.Server {
         let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
         let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
 
+        // Combine players from both teams
         let players: PlayerData[] = blueTeam.players.concat(redTeam.players);
+
+        // Sort players by cumulative score in descending order and slice to get top `n` players
         players.sort((a, b) => b.cumScore - a.cumScore);
-        return players.slice(0, n);
+        const topPlayers = players.slice(0, n).map(player => ({
+            name: player.name,
+            score: player.cumScore,
+            team: player.isBlue ? "blue" : "red"
+        }));
+
+        return topPlayers;
     }
 
     async getNextQuestion(): Promise<HistoricEvent> {
