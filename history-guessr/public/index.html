@@ -99,7 +99,7 @@
         function connect() {
             const room = roomInput.value || 'test-room';
             // Replace with your PartyKit host
-            const host = 'localhost:1999';
+            const host = 'localhost:1984';
             const url = `ws://${host}/party/${room}`;
             
             ws = new WebSocket(url);

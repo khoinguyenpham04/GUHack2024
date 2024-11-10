@@ -8,7 +8,8 @@ These define the message types that the server will receive from the client
 
 export enum MessageType {
     HostCommand = "hostCommand",
-    Guess = "guess"
+    Guess = "guess",
+    JoinTeam = "joinTeam"
 }
 
 export type Answer = {
@@ -18,9 +19,15 @@ export type Answer = {
     year: number;
 }
 
+export enum TeamType {
+    Red = "red",
+    Blue = "blue"
+}
+
 export type Message = {
     type: MessageType;
-    content: Answer | null;
+    // Answer is for Guess, TeamType is for JoinTeam
+    content: Answer | TeamType | null;
 }
 
 export type PlayerData = {
@@ -44,37 +51,32 @@ export type Host = {
 interface GeoContext extends Party.ConnectionContext {
     name: string;
     isBlue: boolean;
+    room: string;
 }
+
 
 export default class Server implements Party.Server {
     constructor(readonly room: Party.Room) { }
     async onConnect(conn: Party.Connection, ctx: GeoContext) {
-        // A websocket just connected!
-        console.log(
-            `Connected:
-                id: ${conn.id}
-                room: ${this.room.id}
-                url: ${new URL(ctx.request.url).pathname}`
-        );
-
-        let h = await this.room.storage.get("host") ?? undefined;
-        if (h === undefined) {
+        if (this.room.connections.size === 1) {
+            // A websocket just connected!
+            console.log(
+                `Connected:
+                    id: ${conn.id}
+                    room: ${this.room.id}
+                    url: ${new URL(ctx.request.url).pathname}`
+            );
             let newHost: Host = {id: conn.id}; 
             await this.room.storage.put("host", newHost);
             // If we are the first connection, we are the host and we don't need to do anything else
+            conn.send(JSON.stringify(
+                {
+                    "type": "PLAYER_JOINED",
+                    "host": true
+
+                }));
             return;
         }
-
-        // let's send a message to the connection
-        conn.send("hello from server");
-
-        let p: PlayerData = {
-            id: conn.id,
-            name: ctx.name,
-            isBlue: ctx.isBlue,
-            cumScore: 0,
-            isHost: false 
-        };
 
         let redTeam: TeamData =
             (await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 });
@@ -82,14 +84,16 @@ export default class Server implements Party.Server {
         let blueTeam: TeamData =
             (await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 });
 
-        // Assign new player to the team
-        if (p.isBlue) blueTeam.players.push(p);
-        else redTeam.players.push(p);
-
         await this.room.storage.put("redTeam", redTeam);
         await this.room.storage.put("blueTeam", blueTeam);
 
-        conn.send(JSON.stringify(this.getNextQuestion()));
+        // Send the player to the choose team screen
+        conn.send(JSON.stringify(
+            {
+                "type": "PLAYER_JOINED",
+                "host": false 
+            }));
+
     }
 
     async onRequest(req: Party.Request): Promise<Response> {
@@ -107,8 +111,8 @@ export default class Server implements Party.Server {
     /*
     Messages expected format:
     {
-        "type": ONE OF: "hostCommand", "guess"
-        "answer": (lat, long, date)
+        "type": ONE OF: "hostCommand", "guess", "joinTeam"
+        "answer": (lat, long, date) | TeamType | null
     }
     */
     async onMessage(message: string, sender: Party.Connection) {
@@ -120,6 +124,7 @@ export default class Server implements Party.Server {
         if (message_json.type == "hostCommand" && sender.id === host.id ) {
             this.handleHostCommand(message_json.content, sender.id);
         }
+
         else if (message_json == "guess") {
             let currentQ: HistoricEvent | undefined = await this.room.storage.get("currentQuestion");
             if (currentQ === undefined) return;
@@ -129,12 +134,41 @@ export default class Server implements Party.Server {
             this.handleGuess(JSON.stringify(message_json.answer), cLong , cLat, cYear, sender.id);
         }
 
+        else if (message_json == "joinTeam") {
+            let team: TeamType = message_json.answer;
+            let thisPlayer: PlayerData= {
+                id: sender.id,
+                name: "NAMe",
+                isBlue: team === TeamType.Blue,
+                cumScore: 0,
+                isHost: false 
+            }
+                    
+            if (team === TeamType.Blue) {
+                let blues: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
+                blues.players.push(thisPlayer);
+                await this.room.storage.put("blueTeam", blues);
+            } else {
+                let reds: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
+                reds.players.push(thisPlayer);
+                await this.room.storage.put("redTeam", reds);
+            }
+
+        }
+
         this.room.broadcast(
             `${sender.id}: ${message}`,
             // ...except for the connection it came from
             [sender.id]
         );
     }
+
+    /*
+    async onClose(connection: Party.Connection) {
+        this.room.storage.delete("host");
+    }
+        */
+
 
     async handleHostCommand(cmd: string, id: string): Promise<void> {
         switch (cmd) {

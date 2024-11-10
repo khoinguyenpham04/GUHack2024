@@ -1,0 +1,1 @@
+export const PK_HOST = process.env.NEXT_PK_URL ?? "127.0.0.1:1984";
