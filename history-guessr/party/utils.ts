@@ -23,7 +23,7 @@
 
     export const calculateUserScore = ( actualLat: number, actualLon: number, actualDate: number,guessLat: number, guessLon: number, guessDate: number): number => {
         // Haversine formula to calculate distance between two points on Earth
-        const MAX_SCORE = 1000;
+        const MAX_SCORE = 5000;
 
         // 1. Calculate distance score based on latitude and longitude
         const distance = haversineDistance(actualLat, actualLon, guessLat, guessLon);

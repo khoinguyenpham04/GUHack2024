@@ -1,6 +1,6 @@
 import type * as Party from "partykit/server";
 import { historicEvents, HistoricEvent } from './data';
-import { calculateUserScore, haversineDistance, dateDifference} from "./utils";
+import { calculateUserScore, haversineDistance, dateDifference } from "./utils";
 import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
 import { json } from "stream/consumers";
 
@@ -155,14 +155,28 @@ export default class Server implements Party.Server {
             const guessLat = message_json.answer.lat;
             const guessDate = message_json.answer.year;
 
-            const MAX_SCORE  =1000;
+            const MAX_SCORE = 5000;
             const distance = haversineDistance(cLat, cLong, guessLat, guessLong);
             const maxDistance = 20020; // Maximum distance between two points on Earth
-            const distanceScore = Math.max(0, MAX_SCORE - (distance / maxDistance) * MAX_SCORE);
-
+            // const distanceScore = MAX_SCORE * Math.exp((-distance / maxDistance));
+            const DISTANCE_SCALING_FACTOR = 4000; // Adjust this as needed
             const dateDiff = dateDifference(cYear, guessDate);
+
+            function calculateDistanceScore(distance: number): number {
+                return Math.round(MAX_SCORE * Math.exp(-distance / DISTANCE_SCALING_FACTOR));
+            }
+
+            const DATE_SCALING_FACTOR =2 ; // Adjust based on typical date ranges
+
+            function calculateDateScore(dateDiff: number): number {
+                return Math.round(MAX_SCORE * Math.exp(-dateDiff / DATE_SCALING_FACTOR));
+            }
+            const distanceScore = calculateDistanceScore(distance);
+            const dateScore = calculateDateScore(dateDiff);
+
+            
             const maxDateDiff = 100;
-            const dateScore = Math.max(0, MAX_SCORE - (dateDiff / maxDateDiff) * MAX_SCORE);
+            // const dateScore = MAX_SCORE * Math.exp((-dateDiff / maxDateDiff));
 
 
             sender.send(JSON.stringify(
@@ -186,7 +200,11 @@ export default class Server implements Party.Server {
                 (await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 });
 
 
-            this.room.broadcast(JSON.stringify(this.calculateProgress(red, blue)));
+            const { redTeamScore, blueTeamScore, redTeamPlayerCount, blueTeamPlayerCount } = await this.getTeamCumulativeScores();
+            console.log("Red Team Score:", redTeamScore);
+            console.log("Blue Team Score:", blueTeamScore);
+
+            this.room.broadcast(JSON.stringify(this.calculateProgress(redTeamScore, blueTeamScore, redTeamPlayerCount, blueTeamPlayerCount)));
 
             // const top5Players = await this.getNBestPlayers(5);
             // this.room.broadcast(JSON.stringify({
@@ -239,7 +257,7 @@ export default class Server implements Party.Server {
         }
 
         else if (message_json.type == "GET_TEAMS") {
-            
+
         }
 
         else if (message_json.type == "DISPLAY_ANSWERS") {
@@ -262,7 +280,7 @@ export default class Server implements Party.Server {
                 id: player.id,
                 name: player.name,
                 team: player.isBlue ? "blue" : "red",
-                score: player.mostRecentGuessScore ?? null // Default to null if undefined
+                score: player.cumScore ?? null // Default to null if undefined
             };
         }
 
@@ -271,24 +289,28 @@ export default class Server implements Party.Server {
             id: null,
             name: "Unknown",
             team: "unknown",
-            score: null
+            cumscore: null
         };
     }
 
-    calculateProgress(red: TeamData, blue: TeamData) {
-        let redCount: number = red.players.length;
-        let blueCount: number = blue.players.length;
+    calculateProgress(red: number, blue: number, redPlayer: number, bluePlayers: number) {
+        let redCount: number = redPlayer
+        let blueCount: number = bluePlayers
         console.log(redCount)
 
-        let redScore: number = red.score;
-        let blueScore: number = blue.score;
+        let redScore: number = red;
+        let blueScore: number = blue;
         console.log(redScore)
 
-        let redMax: number = 1000 * NUM_QS * redCount;
-        let blueMax: number = 1000 * NUM_QS * blueCount;
+        let adjustedRedCount = redCount === 0 ? 1 : redCount;
+        let adjustedBlueCount = blueCount === 0 ? 1 : blueCount;
 
-        let redProgress: number = redScore !== 0 ? redMax / redScore : 0;
-        let blueProgress: number = blueScore !== 0 ? blueMax / blueScore : 0;
+        let redMax: number = 1000 * NUM_QS * adjustedRedCount;
+        let blueMax: number = 1000 * NUM_QS * adjustedBlueCount;
+
+        let redProgress: number = redScore !== 0 ? Math.round((redScore / redMax)) : 0;
+        let blueProgress: number = blueScore !== 0 ? Math.round((blueScore / blueMax)) : 0;
+
 
         console.log(redProgress)
 
@@ -375,6 +397,22 @@ export default class Server implements Party.Server {
         } else {
             await this.room.storage.put("redTeam", redTeam);
         }
+    }
+
+    async getTeamCumulativeScores(): Promise<{ redTeamScore: number; blueTeamScore: number; redTeamPlayerCount: number; blueTeamPlayerCount: number }> {
+        // Retrieve the teams from storage
+        let redTeam: TeamData = await this.room.storage.get("redTeam") ?? { players: [], isBlueTeam: false, score: 0 };
+        let blueTeam: TeamData = await this.room.storage.get("blueTeam") ?? { players: [], isBlueTeam: true, score: 0 };
+
+        // Calculate cumulative scores by summing up each player's cumScore
+        const redTeamScore = redTeam.players.reduce((total, player) => total + player.cumScore, 0);
+        const blueTeamScore = blueTeam.players.reduce((total, player) => total + player.cumScore, 0);
+
+        // Get the number of players in each team
+        const redTeamPlayerCount = redTeam.players.length;
+        const blueTeamPlayerCount = blueTeam.players.length;
+
+        return { redTeamScore, blueTeamScore, redTeamPlayerCount, blueTeamPlayerCount };
     }
 
 

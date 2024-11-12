@@ -9,6 +9,7 @@ import ClientWaitForHost from "./waiting-for-host";
 import { QuizDisplay } from "./quiz-display";
 import ClientResultPage from "./game-result";
 import { HistoricEvent, historicEvents } from "@/party/data";
+import { Spinner } from "./spinner";
 
 
 enum GameState {
@@ -40,7 +41,7 @@ export function GameManager({ gameId }: { gameId: string }) {
     };
 
     const gameSocket = usePartySocket({
-        host: "PARTYKIT_HOST",
+        host: "localhost:1984",
         room: gameId,
 
         onMessage(event) {
@@ -126,7 +127,7 @@ export function GameManager({ gameId }: { gameId: string }) {
 
 
     if (gameState === GameState.CONNECTING) {
-        return <div>Connecting...</div>;
+        return <Spinner/>;
     }
 
     if (gameState === GameState.TEAM_SELECTION) {
@@ -134,7 +135,7 @@ export function GameManager({ gameId }: { gameId: string }) {
     }
 
     if (gameState === GameState.HOST_WAIT_FOR_START) {
-        return <HostLobby gameSocket={gameSocket} />;
+        return <HostLobby gameSocket={gameSocket} roomCode={gameId} />;
         // return <ClientGamePage gameSocket={gameSocket} imageUrl={currentImageUrl}/>;
     }
 

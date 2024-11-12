@@ -21,7 +21,7 @@ interface GameLobbyProps {
 }
 
 export default function HostLobby({
-  roomCode = "...",
+  roomCode,
   gameSocket,
 }: GameLobbyProps) {
   const [redTeam, setRedTeam] = useState<Player[]>([]);
@@ -46,7 +46,7 @@ export default function HostLobby({
     }
   }
 
-  setTimeout(addTeam, getRandomInt(5) * 2000);
+  setTimeout(addTeam, getRandomInt(5) * 10000);
   
 
   
